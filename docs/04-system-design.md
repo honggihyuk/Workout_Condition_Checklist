@@ -84,7 +84,9 @@
 
 | 표 이름 | 담는 것 | 주요 칸 |
 |---|---|---|
-| `exercises` | 내 운동 목록 | id, name, kind(weight/run) |
+| `exercises` | 운동 라이브러리 (기본 운동 + 직접 만든 운동) | id, name, body_part(가슴/등/하체/어깨/팔/복근/유산소), equipment(바벨/덤벨/머신/케이블/맨몸), kind(weight/run), is_custom, hidden |
+| `routines` | 내 루틴 | id, name, sort_order (다음 차례 계산용) |
+| `routine_items` | 루틴에 든 운동 | routine_id, exercise_id, position, default_sets |
 | `supplements` | 영양제·보충제 목록 | id, name, schedule(daily/workout), optional_on_run_only(쉐이크만 true) |
 | `workout_sets` | 웨이트 세트 | id, date, exercise_id, set_no, weight_kg, reps, memo |
 | `runs` | 러닝 | id, date, distance_km, duration_sec, memo (페이스는 계산) |
@@ -123,6 +125,8 @@
 | 주간 KPI | `rpc/get_weekly_kpi` | 주 시작일 | 운동 횟수 / 목표 4, 식사 사진 끼 수, 인바디 최근 판정 | 오늘 |
 | 운동 최근 흐름 | `rpc/get_exercise_history` | 운동 id, 횟수(기본 5) | 최근 5회 날짜별 세트·무게·횟수, 볼륨 | 운동 (전) |
 | 지난번 값 채우기 | `rpc/get_last_sets` | 운동 id | 지난번 세트별 무게·횟수 | 운동 (후) |
+| 다음 차례 루틴 | `rpc/get_next_routine` | 없음 | 마지막으로 한 루틴의 다음 루틴 | 운동 홈, 오늘 |
+| 최근 한 운동 | `rpc/get_recent_exercises` | 개수(기본 5) | 최근에 기록한 운동과 마지막 기록 | 운동 고르기 |
 | 몸 변화 추세 | `rpc/get_body_trend` | 시작일, 종료일 (기본 1개월) | 체중·인바디·컨디션 추이, 인바디 좋음/주의 | 몸 변화 |
 | 엑셀용 데이터 | `rpc/export_records` | 시작일, 종료일 | 기간 안의 모든 기록 | 설정 → 엑셀 내려받기 |
 
