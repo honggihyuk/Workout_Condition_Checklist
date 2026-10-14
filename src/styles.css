@@ -1,12 +1,90 @@
-/* 임시 스타일. 색·글꼴은 5차 테마 선택 후 정합니다. */
+/*
+ * 확정 테마 (docs/05-ui-design.md 3장)
+ * - 모양·글꼴: 테마 B (Gothic A1, 굵은 숫자, 모서리 8~14px)
+ * - 밝은 모드: 테마 A 색 / 어두운 모드: 테마 B 색
+ * - 아이폰 설정(prefers-color-scheme)에 따라 자동 전환
+ */
 :root {
-  font-family: system-ui, -apple-system, sans-serif;
-  color: #1a1a1a;
-  background: #ffffff;
+  color-scheme: light dark;
+
+  --font: 'Gothic A1', -apple-system, 'Apple SD Gothic Neo', sans-serif;
+  --radius-card: 14px;
+  --radius-control: 12px;
+  --radius-chip: 8px;
+
+  /* 밝은 모드 (테마 A 색) */
+  --bg: #F6F6F4;
+  --surface: #FFFFFF;
+  --border: #E4E4E0;
+  --text: #141414;
+  --muted: #5C5C5C;
+  --accent: #2F5BEA;
+  --on-accent: #FFFFFF;
+  --accent-soft: #E8EEFD;
+  --warn: #B23A0A;
+  --warn-soft: #FDEEE6;
+  --track: #E4E4E0;
+  --unchecked: #C9C9C4;
+  --tabbar: #FFFFFF;
 }
-body { margin: 0; }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* 어두운 모드 (테마 B 색) */
+    --bg: #0F1115;
+    --surface: #1A1D23;
+    --border: #2A2E36;
+    --text: #F2F3F5;
+    --muted: #A3A8B3;
+    --accent: #C6F432;
+    --on-accent: #0F1115;
+    --accent-soft: #2A3312;
+    --warn: #FF9F43;
+    --warn-soft: #3A2A17;
+    --track: #2A2E36;
+    --unchecked: #4A505B;
+    --tabbar: #15181D;
+  }
+}
+
+html {
+  /* 글자 크기는 아이폰 설정을 따름 (U11) */
+  font: -apple-system-body;
+  font-family: var(--font);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-text-size-adjust: 100%;
+}
+
+h1 { font-size: 1.5rem; font-weight: 800; margin: 0 0 8px; }
+p { color: var(--muted); }
+
 .app { min-height: 100dvh; display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; }
-.screen { flex: 1; padding: 16px; }
-.tabbar { position: sticky; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid #ddd; background: #fff; padding-bottom: env(safe-area-inset-bottom); }
-.tab { min-height: 48px; display: flex; align-items: center; justify-content: center; color: #555; text-decoration: none; font-size: 13px; }
-.tab.active { color: #000; font-weight: 600; }
+.screen { flex: 1; padding: 24px 16px 16px; }
+
+.tabbar {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  border-top: 1px solid var(--border);
+  background: var(--tabbar);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.tab {
+  min-height: 58px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.75rem;
+}
+.tab.active { color: var(--accent); font-weight: 800; }

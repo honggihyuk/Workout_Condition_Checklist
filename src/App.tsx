@@ -5,14 +5,15 @@ import Workout from './screens/Workout'
 import Meals from './screens/Meals'
 import Body from './screens/Body'
 import Settings from './screens/Settings'
+import TabIcon, { type TabIconName } from './components/TabIcon'
 
 // 탭 5개 구성: docs/03-ux-ia-design.md 1-2장
-const tabs = [
-  { to: '/today', label: '오늘' },
-  { to: '/workout', label: '운동' },
-  { to: '/meals', label: '식단' },
-  { to: '/body', label: '몸 변화' },
-  { to: '/settings', label: '설정' },
+const tabs: { to: string; label: string; icon: TabIconName }[] = [
+  { to: '/today', label: '오늘', icon: 'today' },
+  { to: '/workout', label: '운동', icon: 'workout' },
+  { to: '/meals', label: '식단', icon: 'meals' },
+  { to: '/body', label: '몸 변화', icon: 'body' },
+  { to: '/settings', label: '설정', icon: 'settings' },
 ]
 
 export default function App() {
@@ -32,6 +33,7 @@ export default function App() {
       <nav className="tabbar" aria-label="주요 메뉴">
         {tabs.map((tab) => (
           <NavLink key={tab.to} to={tab.to} className="tab">
+            <TabIcon name={tab.icon} />
             {tab.label}
           </NavLink>
         ))}
