@@ -1,0 +1,12 @@
+/* 임시 스타일. 색·글꼴은 5차 테마 선택 후 정합니다. */
+:root {
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #1a1a1a;
+  background: #ffffff;
+}
+body { margin: 0; }
+.app { min-height: 100dvh; display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; }
+.screen { flex: 1; padding: 16px; }
+.tabbar { position: sticky; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid #ddd; background: #fff; padding-bottom: env(safe-area-inset-bottom); }
+.tab { min-height: 48px; display: flex; align-items: center; justify-content: center; color: #555; text-decoration: none; font-size: 13px; }
+.tab.active { color: #000; font-weight: 600; }
