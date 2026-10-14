@@ -107,6 +107,7 @@ a{color:#1F1F1F}a:hover{color:#000000}
               <sc-if value="{{item.off}}" hint-placeholder-val="{{ true }}"><button type="button" class="chip chip-off" onClick="{{item.toggle}}" aria-pressed="false">{{item.name}}</button></sc-if>
             </sc-for>
           </div>
+          <sc-if value="{{vitaminsTodo}}" hint-placeholder-val="{{ true }}"><button type="button" class="btn btn-ghost" style="min-height: 40px; font-size: 14px; background: #FFFFFF; font-family: inherit; cursor: pointer" onClick="{{allVit}}">매일 영양제 모두 먹음</button></sc-if>
         </div>
       </div>
 
@@ -190,6 +191,11 @@ class Component extends DCLogic {
       suppCount: suppCount,
       vitaminsDone: vitaminsDone,
       vitaminsTodo: !vitaminsDone,
+      allVit: () => {
+        const all = {};
+        Object.keys(this.state.vit).forEach((k) => { all[k] = true; });
+        this.setState({ vit: all });
+      },
       remaining: remaining
     };
   }
