@@ -87,10 +87,11 @@
 | `exercises` | 운동 라이브러리 (기본 운동 + 직접 만든 운동) | id, name, body_part(가슴/등/하체/어깨/팔/복근/유산소), equipment(바벨/덤벨/머신/케이블/맨몸), kind(weight/run), is_custom, hidden |
 | `routines` | 내 루틴 | id, name, sort_order (다음 차례 계산용) |
 | `routine_items` | 루틴에 든 운동 | routine_id, exercise_id, position, default_sets |
-| `supplements` | 영양제·보충제 목록 | id, name, schedule(daily/workout), optional_on_run_only(쉐이크만 true) |
-| `workout_sets` | 웨이트 세트 | id, date, exercise_id, set_no, weight_kg, reps, memo |
+| `supplements` | 영양제·보충제 목록 | id, name, short_name(체크 버튼용 짧은 이름), schedule(daily/workout), optional_on_run_only(쉐이크만 true), sort_order, hidden |
+| `workouts` | 그날 운동 (하루 한 건) | id, date, routine_id(다음 차례 계산용), memo |
+| `workout_sets` | 웨이트 세트 | id, date, exercise_id, exercise_pos(그날 운동 순서), set_no, weight_kg, reps |
 | `runs` | 러닝 | id, date, distance_km, duration_sec, memo (페이스는 계산) |
-| `meals` | 식사 | id, date, slot(breakfast/lunch/dinner/snack), eaten_at, photo_path, status, ai_menu, ai_kcal, ai_protein_g, manual_g, manual_kcal, memo |
+| `meals` | 식사 | id, date, slot(breakfast/lunch/dinner/snack), eaten_at, photo_path, status, ai_menu, ai_kcal, ai_protein_g, manual_menu, manual_g, manual_kcal, manual_protein_g, memo |
 | `supplement_logs` | 복용 체크 | id, date, supplement_id, taken_at |
 | `conditions` | 컨디션 | id, date, type(morning/post_workout), fatigue, sleep_quality, intensity, focus |
 | `body_weights` | 체중 | id, date, weight_kg |
@@ -103,6 +104,7 @@
 
 - 모든 기록 표에는 `owner`(로그인 사용자) 칸이 있고, 본인 기록만 읽고 쓸 수 있게 막습니다 (RLS).
 - 모든 기록의 id는 화면에서 미리 만들어 보냅니다. 같은 저장 요청이 두 번 와도 한 건만 남습니다 (5장 중복 실행 참고).
+- 6차 MVP 구축 때 바뀐 점: 운동 메모와 루틴을 담는 `workouts` 표 추가, 세트의 메모는 `workouts.memo`로 옮김, 식사 직접 입력에 메뉴·단백질 칸 추가. 실제 구조는 [supabase/migrations/0001_init.sql](../supabase/migrations/0001_init.sql)이 기준입니다.
 - `meals.status`: `empty`(미기록) → `uploaded`(사진 올림·분석 중) → `estimated`(확인 필요) → `confirmed`(확인함), 실패 시 `failed`. 3차 상태 정의와 같습니다.
 
 ### 2-2. 기본 저장·불러오기 (Supabase 자동 제공)
