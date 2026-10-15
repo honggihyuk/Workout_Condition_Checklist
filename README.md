@@ -11,6 +11,7 @@
 | 3차 | UX/IA 설계 | 완료 | [03-ux-ia-design.md](docs/03-ux-ia-design.md) |
 | 4차 | 시스템 구조 설계·기능 명세 | 완료 | [04-system-design.md](docs/04-system-design.md) |
 | 5차 | UI 디자인 (프레임 목업 → UI 의사결정 → 테마 선택) | 완료 | [05-ui-design.md](docs/05-ui-design.md) |
+| 6차 | 구축 및 검수 (MVP 범위 구축 → 검수 및 안정화 → 배포(CI/CD) → 추가 구축) | 진행 중 | [06-build.md](docs/06-build.md) |
 
 모든 결정 사항은 [docs/decisions.md](docs/decisions.md)에 한곳으로 모아 둡니다.
 
