@@ -9,7 +9,7 @@ import {
   daySummary,
   dayOf,
   dayStatus,
-  fmtDuration,
+  runText,
   fmtNum,
   mealFilled,
   requiredWorkoutSupplements,
@@ -326,7 +326,7 @@ function WorkoutCard({ date }: { date: string }) {
     )
   const parts: string[] = []
   if (summary.setCount) parts.push(`${summary.exerciseCount}종목 · ${summary.setCount}세트 · 볼륨 ${fmtNum(summary.volume, 0)}kg`)
-  for (const r of summary.runs) parts.push(`러닝 ${fmtNum(r.distance_km)}km${r.duration_sec ? ' · ' + fmtDuration(r.duration_sec) : ''}`)
+  for (const r of summary.runs) parts.push(`러닝 ${runText(r)}`)
   return (
     <div className="card">
       <div className="row">

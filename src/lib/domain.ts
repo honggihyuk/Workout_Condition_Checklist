@@ -283,9 +283,13 @@ export interface RoutineInfo {
   lastDate: string | null
 }
 
-/** 다음 차례: 마지막으로 한 루틴의 다음 루틴 (적어 둔 순서대로 돌아감) */
+export const isRunRoutine = (r: Routine | null | undefined) => r?.kind === 'run'
+
+/** 다음 차례: 마지막으로 한 헬스 루틴의 다음 루틴 (적어 둔 순서대로 돌아감).
+ *  러닝 루틴은 순서에 끼지 않습니다 (06-build.md 3-2). */
 export function routineRotation(index: Index, db: DB): { list: RoutineInfo[]; next: Routine | null } {
   const list: RoutineInfo[] = index.routines.map((routine) => ({ routine, lastDate: null }))
+  const cycle = list.filter((r) => !isRunRoutine(r.routine))
   let lastRoutineId: string | null = null
   let lastDate = ''
   for (const w of db.workouts.values()) {
@@ -293,15 +297,73 @@ export function routineRotation(index: Index, db: DB): { list: RoutineInfo[]; ne
     const info = list.find((r) => r.routine.id === w.routine_id)
     if (!info) continue
     if (!info.lastDate || w.date > info.lastDate) info.lastDate = w.date
-    if (w.date > lastDate) {
+    if (!isRunRoutine(info.routine) && w.date > lastDate) {
       lastDate = w.date
       lastRoutineId = w.routine_id
     }
   }
-  if (!list.length) return { list, next: null }
-  const i = list.findIndex((r) => r.routine.id === lastRoutineId)
-  const next = list[(i + 1) % list.length].routine
+  if (!cycle.length) return { list, next: null }
+  const i = cycle.findIndex((r) => r.routine.id === lastRoutineId)
+  const next = cycle[(i + 1) % cycle.length].routine
   return { list, next }
+}
+
+// ── 러닝 ────────────────────────────────────────────────
+
+/** 평균 페이스 (1km당 초). 시간이 없으면 null */
+export function paceOf(run: Pick<Run, 'distance_km' | 'duration_sec'>): number | null {
+  if (!run.duration_sec || !run.distance_km) return null
+  return run.duration_sec / run.distance_km
+}
+
+/** 날짜 오름차순 러닝 기록 */
+export function allRuns(index: Index, upTo?: string): Run[] {
+  return index.workoutDates.filter((d) => !upTo || d <= upTo).flatMap((d) => index.days.get(d)?.runs ?? [])
+}
+
+export interface RunTotals {
+  count: number
+  km: number
+  /** 시간을 적은 러닝만으로 낸 평균 페이스 (1km당 초) */
+  pace: number | null
+  durationSec: number
+}
+
+export function runTotals(runs: Run[]): RunTotals {
+  let km = 0
+  let timedKm = 0
+  let durationSec = 0
+  for (const r of runs) {
+    km += r.distance_km
+    if (r.duration_sec) {
+      timedKm += r.distance_km
+      durationSec += r.duration_sec
+    }
+  }
+  return { count: runs.length, km, pace: timedKm ? durationSec / timedKm : null, durationSec }
+}
+
+/** 최고 기록: 가장 긴 거리, 가장 빠른 평균 페이스 (1km 이상 달린 날만) */
+export function runBests(runs: Run[]): { longest: Run | null; fastest: Run | null } {
+  let longest: Run | null = null
+  let fastest: Run | null = null
+  for (const r of runs) {
+    if (!longest || r.distance_km > longest.distance_km) longest = r
+    const p = paceOf(r)
+    if (p != null && r.distance_km >= 1 && (!fastest || p < paceOf(fastest)!)) fastest = r
+  }
+  return { longest, fastest }
+}
+
+/** 목표 달성: 목표 거리 이상, 목표 페이스가 있으면 그보다 빠르거나 같게 */
+export function runGoalMet(run: Pick<Run, 'distance_km' | 'duration_sec'>, routine: Routine | null | undefined): boolean | null {
+  if (!routine || !isRunRoutine(routine) || (routine.target_km == null && routine.target_pace_sec == null)) return null
+  if (routine.target_km != null && run.distance_km < routine.target_km) return false
+  if (routine.target_pace_sec != null) {
+    const p = paceOf(run)
+    if (p == null || Math.round(p) > routine.target_pace_sec) return false
+  }
+  return true
 }
 
 export function routineExercises(db: DB, routineId: string) {
@@ -372,15 +434,29 @@ export function fmtDuration(sec: number | null): string {
   const h = Math.floor(sec / 3600)
   const m = Math.floor((sec % 3600) / 60)
   const s = sec % 60
-  return h ? `${h}시간 ${m}분` : s ? `${m}분 ${s}초` : `${m}분`
+  return h ? (m ? `${h}시간 ${m}분` : `${h}시간`) : s ? `${m}분 ${s}초` : `${m}분`
 }
 
-export function fmtPace(run: Run): string {
-  if (!run.duration_sec || !run.distance_km) return ''
-  const per = run.duration_sec / run.distance_km
-  const m = Math.floor(per / 60)
-  const s = Math.round(per % 60)
-  return `${m}'${String(s).padStart(2, '0')}"/km`
+/** 1km당 초 → 5'41" */
+export function fmtPaceSec(sec: number | null, unit = true): string {
+  if (sec == null) return ''
+  const r = Math.round(sec)
+  return `${Math.floor(r / 60)}'${String(r % 60).padStart(2, '0')}"${unit ? '/km' : ''}`
+}
+
+export function fmtPace(run: Pick<Run, 'distance_km' | 'duration_sec'>): string {
+  return fmtPaceSec(paceOf(run))
+}
+
+/** 러닝 한 줄: 5.2km · 29분 34초 · 5'41"/km */
+export function runText(run: Run): string {
+  return [`${fmtNum(run.distance_km, 2)}km`, fmtDuration(run.duration_sec), fmtPace(run)].filter(Boolean).join(' · ')
+}
+
+/** 목표 한 줄: 목표 5km · 5'50"/km */
+export function runTargetText(routine: Routine): string {
+  const parts = [routine.target_km != null ? `${fmtNum(routine.target_km, 2)}km` : '', fmtPaceSec(routine.target_pace_sec)].filter(Boolean)
+  return parts.length ? `목표 ${parts.join(' · ')}` : '거리와 평균 페이스로 기록'
 }
 
 export function setsText(sets: { weight_kg: number; reps: number }[]): string {

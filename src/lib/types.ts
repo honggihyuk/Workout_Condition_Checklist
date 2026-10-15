@@ -14,10 +14,17 @@ export interface Exercise {
   hidden: boolean
 }
 
+export type RoutineKind = 'weight' | 'run'
+
 export interface Routine {
   id: string
   name: string
   sort_order: number
+  /** 헬스 루틴(운동 목록) 또는 러닝 루틴(목표 거리·페이스) */
+  kind: RoutineKind
+  target_km: number | null
+  /** 목표 평균 페이스 (1km당 초) */
+  target_pace_sec: number | null
 }
 
 export interface RoutineItem {

@@ -85,12 +85,12 @@
 | 표 이름 | 담는 것 | 주요 칸 |
 |---|---|---|
 | `exercises` | 운동 라이브러리 (기본 운동 + 직접 만든 운동) | id, name, body_part(가슴/등/하체/어깨/팔/복근/유산소), equipment(바벨/덤벨/머신/케이블/맨몸), kind(weight/run), is_custom, hidden |
-| `routines` | 내 루틴 | id, name, sort_order (다음 차례 계산용) |
+| `routines` | 내 루틴 | id, name, sort_order (다음 차례 계산용), kind(weight/run, 러닝 루틴은 다음 차례 순서에서 빠짐), target_km, target_pace_sec(1km당 초, 러닝 루틴 목표) |
 | `routine_items` | 루틴에 든 운동 | routine_id, exercise_id, position, default_sets |
 | `supplements` | 영양제·보충제 목록 | id, name, short_name(체크 버튼용 짧은 이름), schedule(daily/workout), optional_on_run_only(쉐이크만 true), sort_order, hidden |
 | `workouts` | 그날 운동 (하루 한 건) | id, date, routine_id(다음 차례 계산용), memo |
 | `workout_sets` | 웨이트 세트 | id, date, exercise_id, exercise_pos(그날 운동 순서), set_no, weight_kg, reps |
-| `runs` | 러닝 | id, date, distance_km, duration_sec, memo (페이스는 계산) |
+| `runs` | 러닝 | id, date, distance_km, duration_sec, memo. 화면에서는 거리·평균 페이스를 적고, 시간(거리 × 페이스)으로 저장. 페이스는 시간 ÷ 거리로 다시 계산 |
 | `meals` | 식사 | id, date, slot(breakfast/lunch/dinner/snack), eaten_at, photo_path, status, ai_menu, ai_kcal, ai_protein_g, manual_menu, manual_g, manual_kcal, manual_protein_g, memo |
 | `supplement_logs` | 복용 체크 | id, date, supplement_id, taken_at |
 | `conditions` | 컨디션 | id, date, type(morning/post_workout), fatigue, sleep_quality, intensity, focus |
@@ -266,6 +266,7 @@
 | 세트 무게 | 0kg 미만, 400kg 초과 | 지난번 같은 운동보다 30% 넘게 다름 |
 | 횟수 | 1 미만, 100 초과 | |
 | 러닝 거리 | 0km 이하, 100km 초과 | |
+| 러닝 평균 페이스 (6차 추가) | 1km당 2분 미만, 30분 초과 | 지난번 러닝보다 30% 넘게 다름 |
 | 체중 | 30kg 미만, 200kg 초과 | 지난번보다 3kg 넘게 다름 |
 | 체지방률 | 2% 미만, 60% 초과 | 지난달보다 5%p 넘게 다름 |
 | 한 끼 칼로리 (직접 입력) | 0 미만, 5000 초과 | |

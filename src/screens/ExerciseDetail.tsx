@@ -1,12 +1,13 @@
 // 운동별 기록: 지난번 기록, 최근 5회 볼륨 막대와 세트 목록 (3차 3-2, U5)
+// 러닝: 이번 달 합계, 최고 기록, 최근 5회 거리와 페이스 (6차 검수 요청)
 import { Link, useParams } from 'react-router-dom'
 import { VolumeBars } from '../components/charts'
 import { BackButton } from '../components/ui'
-import { shortLabel } from '../lib/dates'
-import { fmtDuration, fmtKg, fmtNum, fmtPace, recentSessions, setsText } from '../lib/domain'
+import { monthStart, shortLabel } from '../lib/dates'
+import { allRuns, fmtDuration, fmtKg, fmtNum, fmtPaceSec, isRunRoutine, paceOf, recentSessions, runBests, runText, runTotals, setsText } from '../lib/domain'
 import { RUN_EXERCISE_ID } from '../lib/seed'
 import { useStore } from '../lib/store'
-import type { Run } from '../lib/types'
+import type { ReactNode } from 'react'
 
 export default function ExerciseDetail() {
   const { id = '' } = useParams()
@@ -32,42 +33,13 @@ export default function ExerciseDetail() {
       <div className="stack-sm">
         <h1>{ex.name}</h1>
         <span className="muted">
-          {ex.body_part} · {ex.kind === 'run' ? '거리·시간' : ex.equipment}
+          {ex.body_part} · {ex.kind === 'run' ? '거리·평균 페이스' : ex.equipment}
         </span>
       </div>
     </>
   )
 
-  if (id === RUN_EXERCISE_ID) {
-    const runs: Run[] = index.workoutDates.flatMap((d) => index.days.get(d)?.runs ?? []).slice(-5)
-    return (
-      <>
-        {header}
-        {!runs.length ? (
-          <p className="card muted">첫 기록입니다. 운동 기록에서 러닝을 추가해 보세요.</p>
-        ) : (
-          <section className="card" aria-label="최근 5회 흐름">
-            <div className="row between">
-              <h2>최근 {runs.length}회 흐름</h2>
-              <span className="muted">거리 (km)</span>
-            </div>
-            <VolumeBars label="러닝 거리" items={runs.map((r) => ({ date: r.date, value: r.distance_km }))} />
-            {[...runs].reverse().map((r) => (
-              <div key={r.id} className="row between small">
-                <span className="muted">{shortLabel(r.date)}</span>
-                <span>
-                  {fmtNum(r.distance_km)}km {r.duration_sec ? `· ${fmtDuration(r.duration_sec)} · ${fmtPace(r)}` : ''}
-                </span>
-              </div>
-            ))}
-          </section>
-        )}
-        <Link to={`/workout/log?add=${RUN_EXERCISE_ID}`} className="btn btn-primary">
-          오늘 러닝 기록하기
-        </Link>
-      </>
-    )
-  }
+  if (id === RUN_EXERCISE_ID) return <RunDetail header={header} />
 
   const sessions = recentSessions(index, id, 5, todayDate)
   const last = sessions[sessions.length - 1]
@@ -108,6 +80,82 @@ export default function ExerciseDetail() {
       )}
       <Link to={`/workout/log?add=${encodeURIComponent(id)}`} className="btn btn-primary">
         오늘 기록에 추가
+      </Link>
+    </>
+  )
+}
+
+function RunDetail({ header }: { header: ReactNode }) {
+  const { index, todayDate } = useStore()
+  const runs = allRuns(index, todayDate)
+  const recent = runs.slice(-5)
+  const month = runTotals(runs.filter((r) => r.date >= monthStart(todayDate)))
+  const { longest, fastest } = runBests(runs)
+  const runRoutine = index.routines.find(isRunRoutine)
+  return (
+    <>
+      {header}
+      {!runs.length ? (
+        <p className="card muted">첫 기록입니다. 운동 기록에서 러닝을 추가해 보세요.</p>
+      ) : (
+        <>
+          <section className="card" aria-label="이번 달 러닝">
+            <span className="muted">이번 달</span>
+            <span className="big-num">
+              {fmtNum(month.km, 2)}
+              <span className="unit">km</span>
+            </span>
+            <div className="run-stats">
+              <div>
+                <span className="muted">평균 페이스</span>
+                <span className="v">{fmtPaceSec(month.pace, false) || '–'}</span>
+              </div>
+              <div>
+                <span className="muted">총 시간</span>
+                <span className="v">{month.durationSec ? fmtDuration(month.durationSec) : '–'}</span>
+              </div>
+              <div>
+                <span className="muted">횟수</span>
+                <span className="v">{month.count}회</span>
+              </div>
+            </div>
+          </section>
+          <section className="card" aria-label="최고 기록">
+            <h2>최고 기록</h2>
+            {longest && (
+              <div className="row between small">
+                <span>가장 긴 거리</span>
+                <span>
+                  <span className="strong">{fmtNum(longest.distance_km, 2)}km</span> <span className="muted">{shortLabel(longest.date)}</span>
+                </span>
+              </div>
+            )}
+            {fastest && (
+              <div className="row between small">
+                <span>가장 빠른 평균 페이스</span>
+                <span>
+                  <span className="strong">{fmtPaceSec(paceOf(fastest))}</span> <span className="muted">{shortLabel(fastest.date)}</span>
+                </span>
+              </div>
+            )}
+          </section>
+          <section className="card" aria-label="최근 5회 흐름">
+            <div className="row between">
+              <h2>최근 {recent.length}회 흐름</h2>
+              <span className="muted">거리 (km)</span>
+            </div>
+            <VolumeBars label="러닝 거리" unit="km" digits={1} items={recent.map((r) => ({ date: r.date, value: r.distance_km }))} />
+            {[...recent].reverse().map((r) => (
+              <div key={r.id} className="row between small">
+                <span className="muted">{shortLabel(r.date)}</span>
+                <span>{runText(r)}</span>
+              </div>
+            ))}
+          </section>
+        </>
+      )}
+      <Link to={runRoutine ? `/workout/log?routine=${runRoutine.id}` : `/workout/log?add=${RUN_EXERCISE_ID}`} className="btn btn-primary">
+        오늘 러닝 기록하기
       </Link>
     </>
   )

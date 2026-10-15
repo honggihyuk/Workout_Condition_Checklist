@@ -152,7 +152,13 @@ const routinePlan: [id: string, name: string, items: [string, number][]][] = [
   ['r_leg_shoulder', '하체·어깨', [['squat', 4], ['leg_press', 3], ['overhead_press', 3], ['lateral_raise', 3]]],
 ]
 
-export const seedRoutines: Routine[] = routinePlan.map(([id, name], i) => ({ id, name, sort_order: i + 1 }))
+export const RUN_ROUTINE_ID = 'r_run'
+
+export const seedRoutines: Routine[] = [
+  ...routinePlan.map(([id, name], i): Routine => ({ id, name, sort_order: i + 1, kind: 'weight', target_km: null, target_pace_sec: null })),
+  // 러닝만 하는 날용 (6차 검수 요청): 거리와 평균 페이스로 기록
+  { id: RUN_ROUTINE_ID, name: '러닝', sort_order: routinePlan.length + 1, kind: 'run', target_km: 5, target_pace_sec: null },
+]
 
 export const seedRoutineItems: RoutineItem[] = routinePlan.flatMap(([rid, , items]) =>
   items.map(([exercise_id, default_sets], i) => ({

@@ -5,21 +5,28 @@ import { longLabel, shortLabel } from '../lib/dates'
 import {
   dayOf,
   daySummary,
-  fmtDuration,
+  runText,
   fmtNum,
   lastSession,
   recentWorkoutDays,
   routineExercises,
   routineRotation,
   volumeOf,
+  isRunRoutine,
+  fmtPaceSec,
+  lastRun,
+  paceOf,
+  runGoalMet,
+  runTargetText,
   type DaySummary,
 } from '../lib/domain'
 import { useStore } from '../lib/store'
+import type { Routine } from '../lib/types'
 
 function summaryLine(s: DaySummary) {
   const parts: string[] = []
   if (s.setCount) parts.push(`${s.exerciseCount}종목 · ${s.setCount}세트 · 볼륨 ${fmtNum(s.volume, 0)}kg`)
-  for (const r of s.runs) parts.push(`${fmtNum(r.distance_km)}km${r.duration_sec ? ' · ' + fmtDuration(r.duration_sec) : ''}`)
+  for (const r of s.runs) parts.push(runText(r))
   return parts.join(' / ')
 }
 
@@ -29,7 +36,9 @@ export default function Workout() {
   const { list, next } = routineRotation(index, db)
   const todaySummary = daySummary(index, db, todayDate)
   const recent = recentWorkoutDays(index, db, 3, todayDate)
-  const ordered = next ? [list.find((r) => r.routine.id === next.id)!, ...list.filter((r) => r.routine.id !== next.id)] : list
+  // 다음 차례 → 나머지 헬스 루틴 → 러닝 루틴
+  const rank = (r: Routine) => (r.id === next?.id ? 0 : isRunRoutine(r) ? 2 : 1)
+  const ordered = [...list].sort((a, b) => rank(a.routine) - rank(b.routine))
 
   return (
     <>
@@ -55,6 +64,7 @@ export default function Workout() {
         </div>
       )}
       {ordered.map(({ routine, lastDate }) => {
+        if (isRunRoutine(routine)) return <RunRoutineCard key={routine.id} routine={routine} lastDate={lastDate} />
         const items = routineExercises(db, routine.id)
         const isNext = next?.id === routine.id
         return (
@@ -119,6 +129,25 @@ export default function Workout() {
   )
 }
 
+/** 러닝 루틴 카드: 목표와 마지막 러닝 */
+function RunRoutineCard({ routine, lastDate }: { routine: Routine; lastDate: string | null }) {
+  const { index } = useStore()
+  const navigate = useNavigate()
+  const last = lastDate ? index.days.get(lastDate)?.runs[0] : null
+  return (
+    <button type="button" className="card routine-card" onClick={() => navigate(`/workout/log?routine=${routine.id}`)}>
+      <div className="row between">
+        <span className="strong" style={{ fontSize: '1.05rem' }}>
+          {routine.name}
+        </span>
+        <span className="badge badge-muted">러닝</span>
+      </div>
+      <span className="small">{runTargetText(routine)}</span>
+      <span className="muted">{last ? `마지막 ${shortLabel(lastDate!)} · ${runText(last)}` : '아직 안 함'}</span>
+    </button>
+  )
+}
+
 /** 저장한 오늘 운동 요약과 지난번 대비 (3차 3-2 저장 완료) */
 function TodayResult({ summary }: { summary: DaySummary }) {
   const { index, db, todayDate } = useStore()
@@ -151,6 +180,32 @@ function TodayResult({ summary }: { summary: DaySummary }) {
                     {diff >= 0 ? '+' : '−'}
                     {fmtNum(Math.abs(diff), 0)}
                   </span>
+                )}
+              </span>
+            </div>
+          )
+        })}
+        {d.runs.map((r) => {
+          const prev = lastRun(index, todayDate)
+          const pace = paceOf(r)
+          const prevPace = prev ? paceOf(prev) : null
+          const diff = pace != null && prevPace != null ? Math.round(prevPace - pace) : null
+          const goal = runGoalMet(r, d.workout?.routine_id ? db.routines.get(d.workout.routine_id) : null)
+          return (
+            <div key={r.id} className="row between small">
+              <span>
+                러닝 {fmtNum(r.distance_km, 2)}km {goal && <span className="badge badge-good">목표 달성</span>}
+              </span>
+              <span>
+                {fmtPaceSec(pace) || '시간 없음'}{' '}
+                {diff == null ? (
+                  !prev && <span className="muted">첫 기록</span>
+                ) : diff === 0 ? (
+                  <span className="muted">지난번과 같음</span>
+                ) : diff > 0 ? (
+                  <span className="accent-text strong">{diff}초 빠름</span>
+                ) : (
+                  <span className="muted">{-diff}초 느림</span>
                 )}
               </span>
             </div>

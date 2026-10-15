@@ -1,4 +1,5 @@
 // 운동 기록: 세트별 지난번 값 표시·미리 채움, 세트 +/−, 운동·러닝 추가, 메모, 운동 후 컨디션, 체중 (5차 목업 v2, U1·U6·U7)
+// 러닝은 거리와 평균 페이스로 적고, 시간은 거리 × 페이스로 계산해 저장합니다 (6차 검수 요청).
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import ExercisePicker from '../components/ExercisePicker'
@@ -6,12 +7,28 @@ import Icon from '../components/Icon'
 import { useToast } from '../components/Toast'
 import { BackButton, ScoreRow, Sheet, useConfirm, useDateParam } from '../components/ui'
 import { longLabel } from '../lib/dates'
-import { dayOf, fmtKg, fmtNum, lastBefore, lastRun, lastSession, routineExercises, type Index } from '../lib/domain'
+import {
+  dayOf,
+  fmtDuration,
+  fmtKg,
+  fmtNum,
+  fmtPaceSec,
+  isRunRoutine,
+  lastBefore,
+  lastRun,
+  lastSession,
+  paceOf,
+  routineExercises,
+  runGoalMet,
+  runTargetText,
+  runText,
+  type Index,
+} from '../lib/domain'
 import { ids, newId } from '../lib/ids'
 import { RUN_EXERCISE_ID } from '../lib/seed'
 import { local } from '../lib/storage'
 import { remove, upsert, useStore, type Op } from '../lib/store'
-import type { DB, Run, WorkoutSet } from '../lib/types'
+import type { DB, Routine, Run, WorkoutSet } from '../lib/types'
 import { bigChangeAbs, bigChangeRatio, limits, num, rangeError } from '../lib/validate'
 
 interface SetDraft {
@@ -28,11 +45,12 @@ interface RunDraft {
   key: string
   id?: string
   km: string
-  min: string
-  sec: string
+  /** 평균 페이스 분·초 (1km당) */
+  pm: string
+  ps: string
 }
 interface LogDraft {
-  v: 1
+  v: 2
   date: string
   routineId: string | null
   blocks: BlockDraft[]
@@ -56,8 +74,30 @@ function makeBlock(index: Index, exerciseId: string, date: string, nSets?: numbe
   return { key: newId(), exerciseId, sets }
 }
 
-function emptyRun(): RunDraft {
-  return { key: newId(), km: '', min: '', sec: '' }
+function paceParts(sec: number | null): { pm: string; ps: string } {
+  if (sec == null) return { pm: '', ps: '' }
+  const r = Math.round(sec)
+  return { pm: String(Math.floor(r / 60)), ps: String(r % 60) }
+}
+
+function runDraftFrom(run: Run, keepId: boolean): RunDraft {
+  return { key: newId(), id: keepId ? run.id : undefined, km: str(run.distance_km), ...paceParts(paceOf(run)) }
+}
+
+/** 새 러닝 칸: 지난번 러닝 값으로 채우고, 지난번이 없으면 루틴 목표로 채움 */
+function makeRun(index: Index, date: string, routine?: Routine | null): RunDraft {
+  const prev = lastRun(index, date)
+  if (prev) return runDraftFrom(prev, false)
+  if (routine && isRunRoutine(routine)) return { key: newId(), km: str(routine.target_km), ...paceParts(routine.target_pace_sec) }
+  return { key: newId(), km: '', pm: '', ps: '' }
+}
+
+/** 칸에 적은 페이스 (1km당 초). 비었으면 null, 숫자가 아니면 NaN */
+function draftPace(r: RunDraft): number | null {
+  const pm = num(r.pm)
+  const ps = num(r.ps)
+  if (pm == null && ps == null) return null
+  return (pm ?? 0) * 60 + (ps ?? 0)
 }
 
 function fromRecords(index: Index, date: string): LogDraft {
@@ -72,17 +112,11 @@ function fromRecords(index: Index, date: string): LogDraft {
     b.sets.push({ id: s.id, weight: str(s.weight_kg), reps: str(s.reps) })
   }
   return {
-    v: 1,
+    v: 2,
     date,
     routineId: d.workout?.routine_id ?? null,
     blocks,
-    runs: d.runs.map((r) => ({
-      key: newId(),
-      id: r.id,
-      km: str(r.distance_km),
-      min: r.duration_sec == null ? '' : String(Math.floor(r.duration_sec / 60)),
-      sec: r.duration_sec == null ? '' : String(r.duration_sec % 60),
-    })),
+    runs: d.runs.map((r) => runDraftFrom(r, true)),
     memo: d.workout?.memo ?? '',
     intensity: d.post?.intensity ?? null,
     focus: d.post?.focus ?? null,
@@ -94,7 +128,7 @@ function addExercises(index: Index, draft: LogDraft, exIds: string[]): LogDraft 
   const blocks = [...draft.blocks]
   let runs = draft.runs
   for (const id of exIds) {
-    if (id === RUN_EXERCISE_ID) runs = [...runs, emptyRun()]
+    if (id === RUN_EXERCISE_ID) runs = [...runs, makeRun(index, draft.date)]
     else blocks.push(makeBlock(index, id, draft.date))
   }
   return { ...draft, blocks, runs }
@@ -102,10 +136,13 @@ function addExercises(index: Index, draft: LogDraft, exIds: string[]): LogDraft 
 
 function initDraft(index: Index, db: DB, date: string, params: URLSearchParams): { draft: LogDraft; restored: boolean } {
   const saved = local.getJSON<LogDraft>(draftKey(date))
-  if (saved?.v === 1 && saved.date === date) return { draft: saved, restored: true }
+  if (saved?.v === 2 && saved.date === date) return { draft: saved, restored: true }
   let draft = fromRecords(index, date)
   const routineId = params.get('routine')
-  if (routineId && db.routines.has(routineId)) {
+  const routine = routineId ? db.routines.get(routineId) : undefined
+  if (routine && isRunRoutine(routine)) {
+    draft = { ...draft, routineId: draft.routineId ?? routine.id, runs: draft.runs.length ? draft.runs : [makeRun(index, date, routine)] }
+  } else if (routineId && routine) {
     const have = new Set(draft.blocks.map((b) => b.exerciseId))
     const items = routineExercises(db, routineId).filter((it) => !have.has(it.exercise_id))
     draft = {
@@ -124,7 +161,7 @@ function initDraft(index: Index, db: DB, date: string, params: URLSearchParams):
         ...draft,
         routineId: draft.routineId ?? last.workout?.routine_id ?? null,
         blocks: [...draft.blocks, ...[...counts].map(([exId, n]) => makeBlock(index, exId, date, n))],
-        runs: draft.runs.length ? draft.runs : last.runs.map(() => emptyRun()),
+        runs: draft.runs.length ? draft.runs : last.runs.map((r) => runDraftFrom(r, false)),
       }
     }
   }
@@ -165,10 +202,12 @@ export default function WorkoutLog() {
   const updateBlock = (key: string, fn: (b: BlockDraft) => BlockDraft) =>
     update((d) => ({ ...d, blocks: d.blocks.map((b) => (b.key === key ? fn(b) : b)) }))
 
-  const routineName = draft.routineId ? db.routines.get(draft.routineId)?.name : null
-  const prefilled = draft.blocks.some((b) => lastSession(index, b.exerciseId, date))
-  const lastWeight = lastBefore(index.weights, date)
+  const routine = draft.routineId ? db.routines.get(draft.routineId) : undefined
+  const routineName = routine?.name ?? null
   const prevRun = useMemo(() => lastRun(index, date), [index, date])
+  const prefilled = draft.blocks.some((b) => lastSession(index, b.exerciseId, date)) || (draft.runs.length > 0 && !!prevRun)
+  const lastWeight = lastBefore(index.weights, date)
+  const updateRun = (key: string, patch: Partial<RunDraft>) => update((d) => ({ ...d, runs: d.runs.map((x) => (x.key === key ? { ...x, ...patch } : x)) }))
 
   const save = async () => {
     if (saving) return
@@ -199,22 +238,29 @@ export default function WorkoutLog() {
         })
       })
       const runRows: Run[] = []
+      const prevPace = prevRun ? paceOf(prevRun) : null
       draft.runs.forEach((rd, i) => {
         const km = num(rd.km)
-        const mi = num(rd.min)
-        const se = num(rd.sec)
-        if (km == null && mi == null && se == null) return
+        const pm = num(rd.pm)
+        const ps = num(rd.ps)
+        if (km == null && pm == null && ps == null) return
         const label = draft.runs.length > 1 ? `러닝 ${i + 1}` : '러닝'
         if (km == null) return void errs.push(`${label}: 거리를 적어 주세요`)
         const e =
           rangeError(`${label} 거리`, km, limits.runKm, { unit: 'km', exclusiveMin: true }) ??
-          rangeError(`${label} 분`, mi, { min: 0, max: 1440 }) ??
-          rangeError(`${label} 초`, se, { min: 0, max: 59 })
+          rangeError(`${label} 페이스 분`, pm, { min: 0, max: 30 }, { unit: '분' }) ??
+          rangeError(`${label} 페이스 초`, ps, { min: 0, max: 59 }, { unit: '초' }) ??
+          ((pm != null && !Number.isInteger(pm)) || (ps != null && !Number.isInteger(ps)) ? `${label} 페이스: 분과 초를 정수로 적어 주세요` : null)
         if (e) return void errs.push(e)
-        const dur = mi == null && se == null ? null : Math.round((mi ?? 0) * 60 + (se ?? 0))
+        const pace = draftPace(rd)
+        if (pace != null && (pace < limits.runPaceSec.min || pace > limits.runPaceSec.max))
+          return void errs.push(`${label} 페이스: 1km당 2분에서 30분 사이로 적어 주세요`)
+        const dur = pace == null ? null : Math.round(pace * km)
+        if (dur != null && dur > 86400) return void errs.push(`${label}: 시간이 24시간을 넘어요. 거리와 페이스를 확인해 주세요`)
+        if (pace != null && bigChangeRatio(prevPace, pace, 0.3)) warns.push(`${label} 페이스 ${fmtPaceSec(pace)} (지난번 ${fmtPaceSec(prevPace)})`)
         runRows.push({ id: rd.id ?? newId(), date, distance_km: km, duration_sec: dur || null, memo: null })
       })
-      if (!setRows.length && !runRows.length) errs.push('운동이나 러닝을 하나 이상 적어 주세요')
+      if (!errs.length && !setRows.length && !runRows.length) errs.push('운동이나 러닝을 하나 이상 적어 주세요')
       if ((draft.intensity == null) !== (draft.focus == null)) errs.push('운동 후 컨디션: 강도 느낌과 집중도를 둘 다 골라 주세요')
       const bw = num(draft.weight)
       const bwErr = rangeError('체중', bw, limits.bodyWeight, { unit: 'kg' })
@@ -370,49 +416,69 @@ export default function WorkoutLog() {
         )
       })}
 
-      {draft.runs.map((r, i) => (
-        <section key={r.key} className="card" aria-label="러닝">
-          <div className="row">
-            <div className="grow">
-              <h2>러닝</h2>
-              {prevRun && i === 0 && (
-                <span className="muted">
-                  지난번 {fmtNum(prevRun.distance_km)}km
-                  {prevRun.duration_sec ? ` · ${Math.floor(prevRun.duration_sec / 60)}분 ${prevRun.duration_sec % 60}초` : ''}
-                </span>
-              )}
+      {draft.runs.map((r, i) => {
+        const km = num(r.km)
+        const pace = draftPace(r)
+        const ok = km != null && km > 0 && pace != null && pace >= limits.runPaceSec.min && pace <= limits.runPaceSec.max
+        const run = ok ? { distance_km: km, duration_sec: Math.round(pace * km) } : null
+        const goal = run ? runGoalMet(run, routine) : null
+        return (
+          <section key={r.key} className="card" aria-label="러닝">
+            <div className="row">
+              <div className="grow">
+                <h2>러닝</h2>
+                {prevRun && i === 0 && <span className="muted">지난번 {runText(prevRun)}</span>}
+                {isRunRoutine(routine) && i === 0 && (
+                  <span className="muted" style={{ display: 'block' }}>
+                    {runTargetText(routine!)}
+                  </span>
+                )}
+              </div>
+              <button type="button" className="icon-btn" aria-label="러닝 빼기" onClick={() => update((d) => ({ ...d, runs: d.runs.filter((x) => x.key !== r.key) }))}>
+                <Icon name="close" />
+              </button>
             </div>
-            <button type="button" className="icon-btn" aria-label="러닝 빼기" onClick={() => update((d) => ({ ...d, runs: d.runs.filter((x) => x.key !== r.key) }))}>
-              <Icon name="close" />
-            </button>
-          </div>
-          <div className="grid2" style={{ gridTemplateColumns: '1.2fr 1fr 1fr' }}>
-            {(
-              [
-                ['km', '거리 (km)', 'decimal'],
-                ['min', '분', 'numeric'],
-                ['sec', '초', 'numeric'],
-              ] as const
-            ).map(([k, label, mode]) => (
-              <label key={k} className="field-label">
-                <span className="muted">{label}</span>
-                <input
-                  className="field num"
-                  inputMode={mode}
-                  value={r[k]}
-                  onChange={(e) => update((d) => ({ ...d, runs: d.runs.map((x) => (x.key === r.key ? { ...x, [k]: e.target.value } : x)) }))}
-                />
+            <div className="run-inputs">
+              <label className="field-label">
+                <span className="muted">거리 (km)</span>
+                <input className="field num run-big" inputMode="decimal" placeholder="0.00" value={r.km} onFocus={(e) => e.currentTarget.select()} onChange={(e) => updateRun(r.key, { km: e.target.value })} />
               </label>
-            ))}
-          </div>
-        </section>
-      ))}
+              <div className="field-label">
+                <span className="muted">평균 페이스 (1km당)</span>
+                <div className="pace-input">
+                  <label>
+                    <span className="sr">페이스 분</span>
+                    <input className="field num run-big" inputMode="numeric" placeholder="분" value={r.pm} onFocus={(e) => e.currentTarget.select()} onChange={(e) => updateRun(r.key, { pm: e.target.value })} />
+                  </label>
+                  <span className="pace-mark" aria-hidden="true">
+                    &#39;
+                  </span>
+                  <label>
+                    <span className="sr">페이스 초</span>
+                    <input className="field num run-big" inputMode="numeric" placeholder="초" value={r.ps} onFocus={(e) => e.currentTarget.select()} onChange={(e) => updateRun(r.key, { ps: e.target.value })} />
+                  </label>
+                  <span className="pace-mark" aria-hidden="true">
+                    &quot;
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="row between run-result">
+              <span className="muted">
+                시간 <span className="strong run-time">{run ? fmtDuration(run.duration_sec) : '–'}</span>
+                <span className="small"> · 거리 × 페이스로 계산</span>
+              </span>
+              {goal && <span className="badge badge-good">목표 달성</span>}
+            </div>
+          </section>
+        )
+      })}
 
       <div className="grid2">
         <button type="button" className="btn btn-ghost" onClick={() => setPicker({ mode: 'add' })}>
           + 운동 추가
         </button>
-        <button type="button" className="btn btn-ghost" onClick={() => update((d) => ({ ...d, runs: [...d.runs, emptyRun()] }))}>
+        <button type="button" className="btn btn-ghost" onClick={() => update((d) => ({ ...d, runs: [...d.runs, makeRun(index, date, routine)] }))}>
           + 러닝 추가
         </button>
       </div>
@@ -534,7 +600,7 @@ export default function WorkoutLog() {
           onDone={(picked) => {
             if (picker.mode === 'add') update((d) => addExercises(index, d, picked))
             else if (picked[0] === RUN_EXERCISE_ID)
-              update((d) => ({ ...d, blocks: d.blocks.filter((b) => b.key !== picker.key), runs: [...d.runs, emptyRun()] }))
+              update((d) => ({ ...d, blocks: d.blocks.filter((b) => b.key !== picker.key), runs: [...d.runs, makeRun(index, date, routine)] }))
             else
               updateBlock(picker.key, (b) => ({ ...makeBlock(index, picked[0], date, b.sets.length), key: b.key }))
             setPicker(null)

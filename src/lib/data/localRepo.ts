@@ -5,7 +5,9 @@ import { blobs, local } from '../storage'
 import { demoData, demoPhoto, DEMO_PHOTO_PREFIX } from './demo'
 import { toDB, type Repo } from './repo'
 
-const KEY = 'wcc.demo.v1'
+// v2: 러닝 루틴이 생기면서 예시 기록을 새로 채움
+const KEY = 'wcc.demo.v2'
+local.remove('wcc.demo.v1')
 
 type Rows = { [K in TableName]: Tables[K][] }
 

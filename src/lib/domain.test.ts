@@ -2,10 +2,10 @@
 import { describe, expect, it } from 'vitest'
 import { addMonths, weekStart } from './dates'
 import { toDB } from './data/repo'
-import { dayStatus, inbodyVerdict, buildIndex, lastSession, routineRotation, weeklyKpi } from './domain'
+import { dayStatus, fmtPaceSec, inbodyVerdict, buildIndex, lastSession, paceOf, routineRotation, runBests, runGoalMet, runTotals, weeklyKpi } from './domain'
 import { ids } from './ids'
-import { seedExercises, seedRoutineItems, seedRoutines, seedSupplements } from './seed'
-import type { Condition, Meal, MealSlot, SupplementLog, Tables, WorkoutSet } from './types'
+import { RUN_ROUTINE_ID, seedExercises, seedRoutineItems, seedRoutines, seedSupplements } from './seed'
+import type { Condition, Meal, MealSlot, Run, SupplementLog, Tables, WorkoutSet } from './types'
 
 const TODAY = '2026-10-15' // 목요일
 
@@ -153,11 +153,55 @@ describe('운동', () => {
     expect(routineRotation(wrap.index, wrap.db).next?.id).toBe('r_chest_tri')
   })
 
+  it('다음 차례: 러닝 루틴은 순서에 끼지 않음', () => {
+    const { index, db } = make({
+      workouts: [
+        { id: 'w1', date: '2026-10-13', routine_id: 'r_back_bi', memo: null },
+        { id: 'w2', date: '2026-10-14', routine_id: RUN_ROUTINE_ID, memo: null },
+      ],
+    })
+    const { next, list } = routineRotation(index, db)
+    expect(next?.id).toBe('r_leg_shoulder')
+    expect(list.find((r) => r.routine.id === RUN_ROUTINE_ID)?.lastDate).toBe('2026-10-14')
+  })
+
   it('지난번 값: 기록하는 날보다 앞선 마지막 기록', () => {
     const { index } = make({ workout_sets: [set('2026-10-08', 'bench_press', 1, 70, 8), set('2026-10-12', 'bench_press', 1, 72.5, 8), set('2026-10-15', 'bench_press', 1, 75, 6)] })
     expect(lastSession(index, 'bench_press', '2026-10-15')?.date).toBe('2026-10-12')
     expect(lastSession(index, 'bench_press', '2026-10-12')?.volume).toBe(560)
     expect(lastSession(index, 'squat', TODAY)).toBeNull()
+  })
+})
+
+describe('러닝', () => {
+  const run = (date: string, km: number, sec: number | null): Run => ({ id: `run-${date}`, date, distance_km: km, duration_sec: sec, memo: null })
+
+  it('평균 페이스는 시간 ÷ 거리, 거리 × 페이스로 저장한 시간에서 같은 페이스가 나옴', () => {
+    expect(fmtPaceSec(paceOf(run(TODAY, 5, 1650)))).toBe(`5'30"/km`)
+    expect(paceOf(run(TODAY, 5, null))).toBeNull()
+    for (const [km, pace] of [[5.2, 341], [7.3, 333], [10, 299], [1, 412]] as const) {
+      const dur = Math.round(km * pace)
+      expect(Math.round(paceOf(run(TODAY, km, dur))!)).toBe(pace)
+    }
+  })
+
+  it('합계와 최고 기록: 시간을 안 적은 날은 페이스 계산에서 빠짐', () => {
+    const runs = [run('2026-10-03', 5, 1750), run('2026-10-10', 8, 2720), run('2026-10-11', 3, null), run('2026-10-12', 0.5, 120)]
+    const t = runTotals(runs)
+    expect(t.count).toBe(4)
+    expect(t.km).toBeCloseTo(16.5)
+    expect(t.pace).toBeCloseTo((1750 + 2720 + 120) / 13.5)
+    const b = runBests(runs)
+    expect(b.longest?.date).toBe('2026-10-10')
+    expect(b.fastest?.date).toBe('2026-10-10') // 0.5km는 1km 미만이라 빠짐
+  })
+
+  it('목표 달성: 목표 거리 이상, 목표 페이스 이하', () => {
+    const routine = { ...seedRoutines.find((r) => r.id === RUN_ROUTINE_ID)!, target_km: 5, target_pace_sec: 350 }
+    expect(runGoalMet(run(TODAY, 5, 1750), routine)).toBe(true)
+    expect(runGoalMet(run(TODAY, 5, 1760), routine)).toBe(false)
+    expect(runGoalMet(run(TODAY, 4.9, 1500), routine)).toBe(false)
+    expect(runGoalMet(run(TODAY, 5, 1750), seedRoutines[0])).toBeNull()
   })
 })
 
@@ -175,6 +219,7 @@ describe('기본 목록', () => {
     expect(idsSet.size).toBe(seedExercises.length)
     expect(seedExercises.length).toBeGreaterThanOrEqual(95)
     for (const it of seedRoutineItems) expect(idsSet.has(it.exercise_id)).toBe(true)
+    expect(seedRoutineItems.some((it) => it.routine_id === RUN_ROUTINE_ID)).toBe(false)
     expect(new Set(seedExercises.map((e) => e.name)).size).toBe(seedExercises.length)
   })
 })

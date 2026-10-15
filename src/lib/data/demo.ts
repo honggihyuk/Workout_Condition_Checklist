@@ -1,7 +1,7 @@
 // 체험판 예시 기록: 오늘 기준 지난 6주. 검수할 때 화면이 비어 보이지 않게 넣습니다.
 import { addDays, weekday } from '../dates'
 import { ids, newId } from '../ids'
-import { seedExercises, seedRoutineItems, seedRoutines, seedSupplements, SEED_VERSION } from '../seed'
+import { RUN_ROUTINE_ID, seedExercises, seedRoutineItems, seedRoutines, seedSupplements, SEED_VERSION } from '../seed'
 import type { Condition, Meal, MealSlot, Run, SupplementLog, Tables, Workout, WorkoutSet } from '../types'
 
 export const DEMO_PHOTO_PREFIX = 'demo/'
@@ -55,6 +55,9 @@ export function demoData(todayDate: string): { [K in keyof Tables]: Tables[K][] 
   const weights: Tables['body_weights'][] = []
   const sessionCount: Record<string, number> = {}
   let rotation = 0
+  const gymRoutines = seedRoutines.filter((x) => x.kind === 'weight')
+  // 체험판에서는 러닝 루틴에 목표 페이스도 넣어 둠 (5'50"/km)
+  const routines = seedRoutines.map((x) => (x.id === RUN_ROUTINE_ID ? { ...x, target_pace_sec: 350 } : x))
   let fatigue = 2
   let sleep = 4
 
@@ -103,7 +106,7 @@ export function demoData(todayDate: string): { [K in keyof Tables]: Tables[K][] 
     const gym = wd === 0 || wd === 1 || wd === 3 || wd === 4
     const run = wd === 5 && r() < 0.85
     if (gym && r() < 0.9) {
-      const routine = seedRoutines[rotation % seedRoutines.length]
+      const routine = gymRoutines[rotation % gymRoutines.length]
       rotation++
       workouts.push({ id: ids.workout(date), date, routine_id: routine.id, memo: null })
       seedRoutineItems
@@ -128,6 +131,7 @@ export function demoData(todayDate: string): { [K in keyof Tables]: Tables[K][] 
         })
     }
     if (run) {
+      workouts.push({ id: ids.workout(date), date, routine_id: RUN_ROUTINE_ID, memo: null })
       const km = Math.round((5 + r() * 3) * 10) / 10
       runs.push({ id: newId(), date, distance_km: km, duration_sec: Math.round(km * (330 + r() * 40)), memo: null })
     }
@@ -155,7 +159,7 @@ export function demoData(todayDate: string): { [K in keyof Tables]: Tables[K][] 
 
   return {
     exercises: seedExercises,
-    routines: seedRoutines,
+    routines,
     routine_items: seedRoutineItems,
     supplements: seedSupplements,
     workouts,

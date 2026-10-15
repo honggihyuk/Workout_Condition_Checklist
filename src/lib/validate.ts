@@ -5,6 +5,8 @@ export const limits = {
   weight: { min: 0, max: 400 },
   reps: { min: 1, max: 100 },
   runKm: { min: 0, max: 100 },
+  /** 러닝 평균 페이스, 1km당 초 (2분~30분) */
+  runPaceSec: { min: 120, max: 1800 },
   bodyWeight: { min: 30, max: 200 },
   bodyFatPct: { min: 2, max: 60 },
   mealKcal: { min: 0, max: 5000 },

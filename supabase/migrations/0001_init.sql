@@ -64,6 +64,9 @@ create table public.routines (
   owner uuid not null default auth.uid() references auth.users (id) on delete cascade,
   name text not null check (char_length(name) between 1 and 40),
   sort_order integer not null default 1,
+  kind text not null default 'weight' check (kind in ('weight', 'run')),
+  target_km double precision check (target_km is null or (target_km > 0 and target_km <= 100)),
+  target_pace_sec integer check (target_pace_sec is null or target_pace_sec between 120 and 1800),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

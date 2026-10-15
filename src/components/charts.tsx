@@ -1,13 +1,14 @@
 // 간단한 그래프: 볼륨 막대(U5), 체중·컨디션 추이 선
 import { daysBetween, shortLabel } from '../lib/dates'
 
-export function VolumeBars({ items, label }: { items: { date: string; value: number }[]; label: string }) {
+export function VolumeBars({ items, label, unit = 'kg', digits = 0 }: { items: { date: string; value: number }[]; label: string; unit?: string; digits?: number }) {
   const max = Math.max(1, ...items.map((i) => i.value))
+  const fmt = (v: number) => Number(v.toFixed(digits)).toLocaleString('ko-KR')
   return (
-    <div className="bars" role="img" aria-label={label + ': ' + items.map((i) => `${shortLabel(i.date)} ${Math.round(i.value)}kg`).join(', ')}>
+    <div className="bars" role="img" aria-label={label + ': ' + items.map((i) => `${shortLabel(i.date)} ${fmt(i.value)}${unit}`).join(', ')}>
       {items.map((it, i) => (
-        <div className="bar-col" key={it.date}>
-          <span className="bar-val">{Math.round(it.value).toLocaleString('ko-KR')}</span>
+        <div className="bar-col" key={it.date + i}>
+          <span className="bar-val">{fmt(it.value)}</span>
           <div className={'bar' + (i === items.length - 1 ? ' last' : '')} style={{ height: `${Math.max(4, (it.value / max) * 84)}%` }} />
           <span className="bar-val">{shortLabel(it.date)}</span>
         </div>

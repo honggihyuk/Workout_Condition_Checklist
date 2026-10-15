@@ -190,6 +190,15 @@ p { margin: 0; }
 .field:focus { border-color: var(--accent); outline: none; }
 .field.num { text-align: center; font-weight: 700; padding: 0 4px; }
 textarea.field { padding: 10px 12px; min-height: 72px; resize: vertical; }
+/* 러닝: 거리와 평균 페이스 (큰 숫자) */
+.run-inputs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 12px; }
+.field.run-big { height: 56px; font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.pace-input { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto; align-items: center; gap: 2px; }
+.pace-mark { font-size: 1.4rem; font-weight: 800; color: var(--muted); padding: 0 2px; }
+.run-time { color: var(--text); font-size: 0.9375rem; }
+.run-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.run-stats > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.run-stats .v { font-size: 1.125rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 .field-label { display: flex; flex-direction: column; gap: 6px; }
 .error { color: var(--warn); font-size: 0.8125rem; font-weight: 600; }
 .scores { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
