@@ -20,6 +20,7 @@ import {
   runTargetText,
   type DaySummary,
 } from '../lib/domain'
+import { dayNutrition } from '../lib/nutrition'
 import { useStore } from '../lib/store'
 import type { Routine } from '../lib/types'
 
@@ -152,6 +153,7 @@ function RunRoutineCard({ routine, lastDate }: { routine: Routine; lastDate: str
 function TodayResult({ summary }: { summary: DaySummary }) {
   const { index, db, todayDate } = useStore()
   const d = dayOf(index, todayDate)
+  const burned = dayNutrition(index, todayDate).exercise
   const byEx = new Map<string, typeof d.sets>()
   for (const s of d.sets) byEx.set(s.exercise_id, [...(byEx.get(s.exercise_id) ?? []), s])
   return (
@@ -162,7 +164,10 @@ function TodayResult({ summary }: { summary: DaySummary }) {
           수정
         </Link>
       </div>
-      <span className="muted">{summaryLine(summary)}</span>
+      <span className="muted">
+        {summaryLine(summary)}
+        {burned && burned.total > 0 && ` · 약 ${fmtNum(burned.total, 0)}kcal 사용`}
+      </span>
       <div className="stack-sm">
         {[...byEx].map(([exId, sets]) => {
           const vol = volumeOf(sets)

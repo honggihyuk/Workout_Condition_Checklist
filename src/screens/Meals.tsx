@@ -1,13 +1,16 @@
-// 식단: 끼니별 사진 올리기, 직접 입력(메뉴·양·칼로리·단백질), 메모, 오늘 합계 (3차 3-3, U2·U9)
+// 식단: 끼니별 사진 올리기, 직접 입력(메뉴·양·칼로리·단백질), 메모, 오늘 먹은 양 (3차 3-3, U2·U9)
+// 먹은 양 카드: 단백질 목표(체중 × 1.5~2g) 대비, 먹은 칼로리와 쓴 칼로리 비교 (6차 검수 요청)
 // MVP에서는 AI 분석 없이 사진만 올려도 식사 칸이 채워지고, 칼로리는 알면 직접 적습니다 (docs/06-build.md 1-2)
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import Icon from '../components/Icon'
+import { NutritionCard } from '../components/Nutrition'
 import { useToast } from '../components/Toast'
 import { Photo, useDateParam } from '../components/ui'
 import { longLabel, nowTime } from '../lib/dates'
 import { ALL_SLOTS, dayOf, fmtNum, slotLabel } from '../lib/domain'
 import { ids } from '../lib/ids'
+import { mealKcal, mealProtein } from '../lib/nutrition'
 import { photoPath } from '../lib/data/repo'
 import { shrinkPhoto } from '../lib/photo'
 import { remove, upsert, useStore } from '../lib/store'
@@ -33,8 +36,8 @@ function blankMeal(date: string, slot: MealSlot): Meal {
   }
 }
 
-const kcalOf = (m: Meal) => m.manual_kcal ?? m.ai_kcal
-const proteinOf = (m: Meal) => m.manual_protein_g ?? m.ai_protein_g
+const kcalOf = mealKcal
+const proteinOf = mealProtein
 const menuOf = (m: Meal) => m.manual_menu ?? m.ai_menu
 
 export default function Meals() {
@@ -42,9 +45,6 @@ export default function Meals() {
   const [params] = useSearchParams()
   const { index, todayDate } = useStore()
   const d = dayOf(index, date)
-  const confirmed = ALL_SLOTS.map((s) => d.meals[s]).filter((m): m is Meal => !!m && m.status === 'confirmed')
-  const kcal = confirmed.reduce((a, m) => a + (kcalOf(m) ?? 0), 0)
-  const protein = confirmed.reduce((a, m) => a + (proteinOf(m) ?? 0), 0)
 
   const slot = params.get('slot')
   useEffect(() => {
@@ -62,17 +62,7 @@ export default function Meals() {
           </Link>
         )}
       </div>
-      <div className="card">
-        <span className="muted">{date === todayDate ? '오늘' : '이날'} 합계 (확인한 끼니)</span>
-        {confirmed.length ? (
-          <span className="big-num" style={{ fontSize: '1.4rem' }}>
-            {fmtNum(kcal, 0)}
-            <span className="unit"> kcal · 단백질 {fmtNum(protein, 0)}g</span>
-          </span>
-        ) : (
-          <span className="muted">칼로리를 적은 끼니가 아직 없어요</span>
-        )}
-      </div>
+      <NutritionCard date={date} />
       {ALL_SLOTS.map((s) => (
         <MealCard key={s} date={date} slot={s} meal={d.meals[s]} />
       ))}

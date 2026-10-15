@@ -6,6 +6,7 @@ import { BackButton } from '../components/ui'
 import { monthStart, shortLabel } from '../lib/dates'
 import { allRuns, fmtDuration, fmtKg, fmtNum, fmtPaceSec, isRunRoutine, paceOf, recentSessions, runBests, runText, runTotals, setsText } from '../lib/domain'
 import { RUN_EXERCISE_ID } from '../lib/seed'
+import { runKcal, weightOn } from '../lib/nutrition'
 import { useStore } from '../lib/store'
 import type { ReactNode } from 'react'
 
@@ -89,7 +90,12 @@ function RunDetail({ header }: { header: ReactNode }) {
   const { index, todayDate } = useStore()
   const runs = allRuns(index, todayDate)
   const recent = runs.slice(-5)
-  const month = runTotals(runs.filter((r) => r.date >= monthStart(todayDate)))
+  const monthRuns = runs.filter((r) => r.date >= monthStart(todayDate))
+  const month = runTotals(monthRuns)
+  const monthKcal = monthRuns.reduce((a, r) => {
+    const kg = weightOn(index, r.date)
+    return kg == null ? a : a + runKcal(r, kg)
+  }, 0)
   const { longest, fastest } = runBests(runs)
   const runRoutine = index.routines.find(isRunRoutine)
   return (
@@ -100,7 +106,7 @@ function RunDetail({ header }: { header: ReactNode }) {
       ) : (
         <>
           <section className="card" aria-label="이번 달 러닝">
-            <span className="muted">이번 달</span>
+            <span className="muted">이번 달 · {month.count}회</span>
             <span className="big-num">
               {fmtNum(month.km, 2)}
               <span className="unit">km</span>
@@ -115,8 +121,8 @@ function RunDetail({ header }: { header: ReactNode }) {
                 <span className="v">{month.durationSec ? fmtDuration(month.durationSec) : '–'}</span>
               </div>
               <div>
-                <span className="muted">횟수</span>
-                <span className="v">{month.count}회</span>
+                <span className="muted">활동 칼로리</span>
+                <span className="v">{monthKcal ? `${fmtNum(monthKcal, 0)}kcal` : '–'}</span>
               </div>
             </div>
           </section>

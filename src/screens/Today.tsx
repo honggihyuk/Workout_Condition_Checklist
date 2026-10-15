@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Icon from '../components/Icon'
+import { NutritionSummary } from '../components/Nutrition'
 import { Check, ScoreRow, useDateParam } from '../components/ui'
 import { longLabel, shortLabel } from '../lib/dates'
 import {
@@ -18,6 +19,7 @@ import {
   weeklyKpi,
 } from '../lib/domain'
 import { ids } from '../lib/ids'
+import { dayNutrition } from '../lib/nutrition'
 import { remove, upsert, useStore } from '../lib/store'
 import type { Condition, Supplement } from '../lib/types'
 
@@ -235,6 +237,7 @@ function MealsCard({ date }: { date: string }) {
           )
         })}
       </div>
+      <NutritionSummary date={date} />
     </div>
   )
 }
@@ -327,6 +330,8 @@ function WorkoutCard({ date }: { date: string }) {
   const parts: string[] = []
   if (summary.setCount) parts.push(`${summary.exerciseCount}종목 · ${summary.setCount}세트 · 볼륨 ${fmtNum(summary.volume, 0)}kg`)
   for (const r of summary.runs) parts.push(`러닝 ${runText(r)}`)
+  const burned = dayNutrition(index, date).exercise
+  if (burned && burned.total > 0) parts.push(`운동으로 약 ${fmtNum(burned.total, 0)}kcal 사용`)
   return (
     <div className="card">
       <div className="row">

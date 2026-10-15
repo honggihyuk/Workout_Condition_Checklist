@@ -221,6 +221,21 @@ textarea.field { padding: 10px 12px; min-height: 72px; resize: vertical; }
 .meter { height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
 .meter > div { height: 100%; background: var(--accent); }
 
+/* 단백질 목표(띠)와 먹은 양(막대), 먹은·쓴 칼로리 */
+.text-ink { color: var(--text); }
+.rule { border: 0; border-top: 1px solid var(--border); margin: 0; width: 100%; }
+.bullet { position: relative; height: 16px; border-radius: 4px; background: var(--track); }
+.bullet-zone { position: absolute; top: 0; bottom: 0; background: var(--accent-soft); border-left: 2px solid var(--accent); border-right: 2px solid var(--accent); }
+.bullet-bar { position: absolute; left: 0; top: 5px; height: 6px; border-radius: 0 4px 4px 0; background: var(--accent); }
+.energy { display: flex; flex-direction: column; gap: 6px; }
+.energy-row { display: grid; grid-template-columns: 2.2rem minmax(0, 1fr) 3.6rem; gap: 8px; align-items: center; }
+.energy-track { height: 10px; }
+.energy-track > div { height: 100%; border-radius: 0 4px 4px 0; }
+.energy-in { background: var(--accent); }
+.energy-out { background: var(--unchecked); }
+.energy-val { text-align: right; font-variant-numeric: tabular-nums; font-size: 0.875rem; }
+.nutrition-summary { display: flex; flex-direction: column; gap: 2px; padding-left: 38px; font-size: 0.8125rem; color: var(--text); text-decoration: none; }
+
 /* 운동 기록 */
 .set-grid { display: grid; grid-template-columns: 2.2rem minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: center; }
 .set-grid .muted { font-size: 0.75rem; }
