@@ -153,6 +153,15 @@ p { margin: 0; }
 .btn-quiet { color: var(--muted); padding: 0 8px; font-weight: 600; min-height: 36px; }
 .btn-link { color: var(--accent); padding: 0; min-height: 36px; font-weight: 700; text-decoration: none; background: none; border: none; display: inline-flex; align-items: center; }
 .btn-danger { color: var(--warn); }
+.btn-primary.btn-small { width: auto; min-height: 44px; padding: 0 14px; font-size: 0.875rem; flex: none; }
+
+/* 단백질 표 */
+.food-head { padding: 8px 0 4px; border-bottom: 1px solid var(--border); }
+.food-row { border-bottom: 1px solid var(--border); }
+.food-row:last-child { border-bottom: none; }
+.food-row .list-item { border-bottom: none; width: 100%; }
+.food-val { flex: none; text-align: right; font-variant-numeric: tabular-nums; }
+.food-amount { display: flex; flex-direction: column; gap: 10px; padding: 0 0 14px; }
 .icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
   width: 40px; height: 40px; border-radius: 10px; border: none; background: transparent; color: var(--muted); flex: none;

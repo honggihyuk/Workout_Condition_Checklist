@@ -7,6 +7,7 @@ import ExerciseBrowse from './screens/ExerciseBrowse'
 import ExerciseDetail from './screens/ExerciseDetail'
 import RoutineEdit from './screens/RoutineEdit'
 import Meals from './screens/Meals'
+import Foods from './screens/Foods'
 import Body from './screens/Body'
 import Settings from './screens/Settings'
 import ExerciseManage from './screens/ExerciseManage'
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="/workout/exercise/:id" element={<ExerciseDetail />} />
           <Route path="/workout/routines" element={<RoutineEdit />} />
           <Route path="/meals" element={<Meals />} />
+          <Route path="/meals/foods" element={<Foods />} />
           <Route path="/body" element={<Body />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/settings/exercises" element={<ExerciseManage />} />

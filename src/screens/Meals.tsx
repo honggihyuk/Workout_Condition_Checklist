@@ -6,7 +6,8 @@ import { Link, useSearchParams } from 'react-router-dom'
 import Icon from '../components/Icon'
 import { NutritionCard } from '../components/Nutrition'
 import { useToast } from '../components/Toast'
-import { Photo, useDateParam } from '../components/ui'
+import { Photo, Sheet, useDateParam } from '../components/ui'
+import { FoodCalculator, type FoodPick } from '../components/FoodTable'
 import { longLabel, nowTime } from '../lib/dates'
 import { ALL_SLOTS, dayOf, fmtNum, slotLabel } from '../lib/domain'
 import { ids } from '../lib/ids'
@@ -64,6 +65,16 @@ export default function Meals() {
       </div>
       <NutritionCard date={date} />
       <DietSupplementsCard date={date} />
+      <Link to="/meals/foods" className="card card-link">
+        <div className="row">
+          <Icon name="search" size={22} />
+          <div className="grow">
+            <div className="strong">단백질 표</div>
+            <div className="muted">고기·생선·계란 100g당 단백질과 무게별 계산</div>
+          </div>
+          <Icon name="right" />
+        </div>
+      </Link>
       {ALL_SLOTS.map((s) => (
         <MealCard key={s} date={date} slot={s} meal={d.meals[s]} />
       ))}
@@ -267,7 +278,22 @@ function MealForm({
     memo: meal?.memo ?? '',
   })
   const [error, setError] = useState<string | null>(null)
+  const [foods, setFoods] = useState(false)
+  const [added, setAdded] = useState<string | null>(null)
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((cur) => ({ ...cur, [k]: e.target.value }))
+  // 단백질 표에서 고른 음식을 이 끼니 칸에 더함 (이미 적힌 값에 더하기)
+  const addFood = (p: FoodPick) => {
+    const plus = (cur: string, v: number, digits: number) => String(Number(((num(cur) || 0) + v).toFixed(digits)))
+    setF((cur) => ({
+      ...cur,
+      protein: plus(cur.protein, p.protein, 1),
+      kcal: plus(cur.kcal, p.kcal, 0),
+      g: plus(cur.g, p.grams, 0),
+      menu: [cur.menu.trim(), `${p.name} ${fmtNum(p.grams, 0)}g`].filter(Boolean).join(', '),
+    }))
+    setAdded(`${p.name} ${fmtNum(p.grams, 0)}g: 단백질 ${fmtNum(p.protein)}g · ${fmtNum(p.kcal, 0)}kcal을 더했어요`)
+    setFoods(false)
+  }
 
   const save = () => {
     const g = num(f.g)
@@ -319,6 +345,10 @@ function MealForm({
           <input className="field" inputMode="numeric" placeholder="선택" value={f.protein} onChange={set('protein')} />
         </label>
       </div>
+      <button type="button" className="btn btn-ghost" onClick={() => setFoods(true)}>
+        단백질 표에서 고기·생선 더하기
+      </button>
+      {added && <p className="muted">{added}</p>}
       <label className="field-label">
         <span className="muted">메뉴</span>
         <input className="field" placeholder="예: 연어 포케" value={f.menu} onChange={set('menu')} />
@@ -331,6 +361,11 @@ function MealForm({
       <button type="button" className="btn btn-primary" onClick={save}>
         저장
       </button>
+      {foods && (
+        <Sheet title="단백질 표" onClose={() => setFoods(false)}>
+          <FoodCalculator onAdd={addFood} />
+        </Sheet>
+      )}
       <div className="row between">
         <button type="button" className="btn btn-quiet" onClick={onClose}>
           취소
