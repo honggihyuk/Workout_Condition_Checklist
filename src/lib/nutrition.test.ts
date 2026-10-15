@@ -3,6 +3,7 @@ import { toDB } from './data/repo'
 import { buildIndex } from './domain'
 import { ids } from './ids'
 import { dayNutrition, gymKcal, proteinGap, runKcal, weightOn } from './nutrition'
+import { seedSupplements } from './seed'
 import type { Meal, Tables } from './types'
 
 const D = '2026-10-15'
@@ -39,10 +40,26 @@ describe('단백질 목표와 칼로리 비교', () => {
     })
     const n = dayNutrition(index, D)
     expect(n.protein).toEqual({ min: 114, max: 152 })
-    expect(n.intake).toEqual({ kcal: 1160, protein: 70, counted: 2, missing: 1 })
+    expect(n.intake).toEqual({ kcal: 1160, protein: 70, counted: 2, missing: 1, extras: [] })
     expect(proteinGap(70, n.protein!)).toEqual({ state: 'under', grams: 44 })
     expect(proteinGap(130, n.protein!).state).toBe('in')
     expect(proteinGap(160, n.protein!)).toEqual({ state: 'over', grams: 8 })
+  })
+
+  it('쉐이크를 먹은 날은 쉐이크 단백질·칼로리가 먹은 양에 더해짐 (기본 40g · 36g · 150kcal)', () => {
+    const shake = seedSupplements.find((s) => s.id === 'wpi_shake')!
+    expect([shake.serving_g, shake.protein_g, shake.kcal]).toEqual([40, 36, 150])
+    const rows = { supplements: seedSupplements, meals: [meal('breakfast', 520, 38)] }
+    const without = dayNutrition(make(rows), D)
+    expect(without.intake.protein).toBe(38)
+    const taken = (sid: string) => ({ id: ids.supplementLog(D, sid), date: D, supplement_id: sid, taken_at: D + 'T20:40:00+09:00' })
+    const withShake = dayNutrition(make({ ...rows, supplement_logs: [taken('wpi_shake'), taken('creatine')] }), D)
+    expect(withShake.intake.protein).toBe(74)
+    expect(withShake.intake.kcal).toBe(670)
+    expect(withShake.intake.extras.map((s) => s.id)).toEqual(['wpi_shake'])
+    // 숨긴 뒤에도 지난날 먹은 쉐이크는 그대로 셈
+    const hidden = dayNutrition(make({ ...rows, supplements: seedSupplements.map((s) => ({ ...s, hidden: true })), supplement_logs: [taken('wpi_shake')] }), D)
+    expect(hidden.intake.protein).toBe(74)
   })
 
   it('운동 칼로리: 러닝은 체중 × 거리, 헬스는 세트 수로 시간을 어림잡고 강도로 MET를 고름', () => {

@@ -51,6 +51,8 @@ export interface Index {
   workoutDates: string[]
   exercises: Exercise[]
   supplements: Supplement[]
+  /** 숨긴 것까지 모든 영양제·보충제 */
+  supplementById: Map<string, Supplement>
   routines: Routine[]
   weights: BodyWeight[]
   inbody: InBody[]
@@ -114,6 +116,7 @@ export function buildIndex(db: DB): Index {
     workoutDates,
     exercises: [...db.exercises.values()],
     supplements: [...db.supplements.values()].filter((s) => !s.hidden).sort((a, b) => a.sort_order - b.sort_order),
+    supplementById: db.supplements,
     routines: [...db.routines.values()].sort((a, b) => a.sort_order - b.sort_order),
     weights: [...db.body_weights.values()].sort(byDate),
     inbody: [...db.inbody.values()].sort(byDate),

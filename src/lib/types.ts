@@ -43,6 +43,10 @@ export interface Supplement {
   optional_on_run_only: boolean
   sort_order: number
   hidden: boolean
+  /** 먹은 날 식단 합계에 더할 1회 양(g)·단백질(g)·칼로리(kcal). 쉐이크 등 (6차 검수 요청) */
+  serving_g: number | null
+  protein_g: number | null
+  kcal: number | null
 }
 
 /** 하루 한 건. 루틴(다음 차례 계산)과 운동 메모 */

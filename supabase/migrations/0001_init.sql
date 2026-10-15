@@ -91,6 +91,10 @@ create table public.supplements (
   optional_on_run_only boolean not null default false,
   sort_order integer not null default 1,
   hidden boolean not null default false,
+  -- 먹은 날 식단 합계에 더할 1회 양·단백질·칼로리 (쉐이크 등)
+  serving_g double precision check (serving_g is null or serving_g between 0 and 500),
+  protein_g double precision check (protein_g is null or protein_g between 0 and 300),
+  kcal double precision check (kcal is null or kcal between 0 and 5000),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

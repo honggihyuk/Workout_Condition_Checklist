@@ -5,8 +5,10 @@ import Icon from '../components/Icon'
 import { Sheet } from '../components/ui'
 import { resetDemo } from '../lib/data/localRepo'
 import { newId } from '../lib/ids'
+import { supplementNutritionText as nutritionLabel } from '../lib/nutrition'
 import { upsert, useStore } from '../lib/store'
 import type { Supplement } from '../lib/types'
+import { limits, num, rangeError } from '../lib/validate'
 
 function kindLabel(s: Supplement) {
   if (s.schedule === 'daily') return '매일'
@@ -52,6 +54,7 @@ export default function Settings() {
               </span>
               <span className="muted">
                 {kindLabel(s)}
+                {nutritionLabel(s) && ` · 식단에 더함 ${nutritionLabel(s)}`}
                 {s.hidden ? ' · 숨김' : ''}
               </span>
             </span>
@@ -116,7 +119,20 @@ function SupplementSheet({ item, onClose }: { item: Supplement | null; onClose: 
   const [schedule, setSchedule] = useState<Supplement['schedule']>(item?.schedule ?? 'daily')
   const [optional, setOptional] = useState(item?.optional_on_run_only ?? false)
   const [hidden, setHidden] = useState(item?.hidden ?? false)
+  const str = (v: number | null | undefined) => (v == null ? '' : String(v))
+  const [serving, setServing] = useState(str(item?.serving_g))
+  const [protein, setProtein] = useState(str(item?.protein_g))
+  const [kcal, setKcal] = useState(str(item?.kcal))
+  const [error, setError] = useState<string | null>(null)
   const save = () => {
+    const g = num(serving)
+    const p = num(protein)
+    const k = num(kcal)
+    const e =
+      rangeError('1회 양', g, limits.supplementServing, { unit: 'g' }) ??
+      rangeError('단백질', p, limits.mealProtein, { unit: 'g' }) ??
+      rangeError('칼로리', k, limits.mealKcal, { unit: 'kcal' })
+    if (e) return setError(e)
     const sort = item?.sort_order ?? Math.max(0, ...[...db.supplements.values()].map((s) => s.sort_order)) + 1
     apply([
       upsert('supplements', [
@@ -128,6 +144,9 @@ function SupplementSheet({ item, onClose }: { item: Supplement | null; onClose: 
           optional_on_run_only: schedule === 'workout' && optional,
           sort_order: sort,
           hidden,
+          serving_g: g,
+          protein_g: p,
+          kcal: k,
         },
       ]),
     ])
@@ -160,6 +179,25 @@ function SupplementSheet({ item, onClose }: { item: Supplement | null; onClose: 
           <span>러닝만 한 날은 선택 (안 먹어도 루틴 완료)</span>
         </label>
       )}
+      <div className="stack-sm">
+        <span className="strong small">식단에 더하기 (선택)</span>
+        <div className="grid3">
+          {(
+            [
+              ['1회 양 (g)', serving, setServing, '40'],
+              ['단백질 (g)', protein, setProtein, '36'],
+              ['칼로리 (kcal)', kcal, setKcal, '150'],
+            ] as const
+          ).map(([label, value, set, ph]) => (
+            <label key={label} className="field-label">
+              <span className="muted">{label}</span>
+              <input className="field num" inputMode="decimal" placeholder={ph} value={value} onChange={(e) => set(e.target.value)} />
+            </label>
+          ))}
+        </div>
+        <span className="muted">먹은 날 단백질·칼로리 합계에 더해져요. 제품 영양표의 1회 양 기준으로 적어 주세요.</span>
+      </div>
+      {error && <p className="error">{error}</p>}
       {item && (
         <label className="row">
           <input type="checkbox" checked={hidden} onChange={(e) => setHidden(e.target.checked)} style={{ width: 22, height: 22 }} />

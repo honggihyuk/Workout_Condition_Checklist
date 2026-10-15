@@ -134,15 +134,16 @@ export const seedExercises: Exercise[] = [
 
 // 2차 2-1 영양제·보충제 9종
 export const seedSupplements: Supplement[] = [
-  { id: 'vitamin_c', name: '비타민C', short_name: null, schedule: 'daily', optional_on_run_only: false, sort_order: 1, hidden: false },
-  { id: 'lutein', name: '루테인', short_name: null, schedule: 'daily', optional_on_run_only: false, sort_order: 2, hidden: false },
-  { id: 'omega3', name: 'rTG 오메가3', short_name: '오메가3', schedule: 'daily', optional_on_run_only: false, sort_order: 3, hidden: false },
-  { id: 'calcium_mix', name: '칼슘·마그네슘·비타민D·아연·망간', short_name: '칼슘 외 4종', schedule: 'daily', optional_on_run_only: false, sort_order: 4, hidden: false },
-  { id: 'probiotics', name: '프로바이오틱스', short_name: null, schedule: 'daily', optional_on_run_only: false, sort_order: 5, hidden: false },
-  { id: 'creatine', name: '크레아틴', short_name: null, schedule: 'workout', optional_on_run_only: false, sort_order: 6, hidden: false },
-  { id: 'eaa', name: 'EAA', short_name: null, schedule: 'workout', optional_on_run_only: false, sort_order: 7, hidden: false },
-  { id: 'glutamine', name: '글루타민', short_name: null, schedule: 'workout', optional_on_run_only: false, sort_order: 8, hidden: false },
-  { id: 'wpi_shake', name: 'WPI 쉐이크', short_name: null, schedule: 'workout', optional_on_run_only: true, sort_order: 9, hidden: false },
+  { id: 'vitamin_c', name: '비타민C', short_name: null, schedule: 'daily', optional_on_run_only: false, sort_order: 1, hidden: false, serving_g: null, protein_g: null, kcal: null },
+  { id: 'lutein', name: '루테인', short_name: null, schedule: 'daily', optional_on_run_only: false, sort_order: 2, hidden: false, serving_g: null, protein_g: null, kcal: null },
+  { id: 'omega3', name: 'rTG 오메가3', short_name: '오메가3', schedule: 'daily', optional_on_run_only: false, sort_order: 3, hidden: false, serving_g: null, protein_g: null, kcal: null },
+  { id: 'calcium_mix', name: '칼슘·마그네슘·비타민D·아연·망간', short_name: '칼슘 외 4종', schedule: 'daily', optional_on_run_only: false, sort_order: 4, hidden: false, serving_g: null, protein_g: null, kcal: null },
+  { id: 'probiotics', name: '프로바이오틱스', short_name: null, schedule: 'daily', optional_on_run_only: false, sort_order: 5, hidden: false, serving_g: null, protein_g: null, kcal: null },
+  { id: 'creatine', name: '크레아틴', short_name: null, schedule: 'workout', optional_on_run_only: false, sort_order: 6, hidden: false, serving_g: null, protein_g: null, kcal: null },
+  { id: 'eaa', name: 'EAA', short_name: null, schedule: 'workout', optional_on_run_only: false, sort_order: 7, hidden: false, serving_g: null, protein_g: null, kcal: null },
+  { id: 'glutamine', name: '글루타민', short_name: null, schedule: 'workout', optional_on_run_only: false, sort_order: 8, hidden: false, serving_g: null, protein_g: null, kcal: null },
+  // 쉐이크 1회 40g (대표님). 단백질·칼로리는 WPI 일반값(단백질 약 90%, 1g당 약 3.7kcal)으로 넣어 두고 설정에서 고침
+  { id: 'wpi_shake', name: 'WPI 쉐이크', short_name: null, schedule: 'workout', optional_on_run_only: true, sort_order: 9, hidden: false, serving_g: 40, protein_g: 36, kcal: 150 },
 ]
 
 // 5차 확정: 3분할과 비슷한 루틴 (예시, 루틴 편집에서 바꿀 수 있음)

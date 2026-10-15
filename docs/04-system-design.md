@@ -87,7 +87,7 @@
 | `exercises` | 운동 라이브러리 (기본 운동 + 직접 만든 운동) | id, name, body_part(가슴/등/하체/어깨/팔/복근/유산소), equipment(바벨/덤벨/머신/케이블/맨몸), kind(weight/run), is_custom, hidden |
 | `routines` | 내 루틴 | id, name, sort_order (다음 차례 계산용), kind(weight/run, 러닝 루틴은 다음 차례 순서에서 빠짐), target_km, target_pace_sec(1km당 초, 러닝 루틴 목표) |
 | `routine_items` | 루틴에 든 운동 | routine_id, exercise_id, position, default_sets |
-| `supplements` | 영양제·보충제 목록 | id, name, short_name(체크 버튼용 짧은 이름), schedule(daily/workout), optional_on_run_only(쉐이크만 true), sort_order, hidden |
+| `supplements` | 영양제·보충제 목록 | id, name, short_name(체크 버튼용 짧은 이름), schedule(daily/workout), optional_on_run_only(쉐이크만 true), sort_order, hidden, serving_g·protein_g·kcal(먹은 날 식단 합계에 더할 1회 양·성분, 쉐이크 기본 40g·36g·150kcal) |
 | `workouts` | 그날 운동 (하루 한 건) | id, date, routine_id(다음 차례 계산용), memo |
 | `workout_sets` | 웨이트 세트 | id, date, exercise_id, exercise_pos(그날 운동 순서), set_no, weight_kg, reps |
 | `runs` | 러닝 | id, date, distance_km, duration_sec, memo. 화면에서는 거리·평균 페이스를 적고, 시간(거리 × 페이스)으로 저장. 페이스는 시간 ÷ 거리로 다시 계산 |

@@ -10,11 +10,11 @@ import { Photo, useDateParam } from '../components/ui'
 import { longLabel, nowTime } from '../lib/dates'
 import { ALL_SLOTS, dayOf, fmtNum, slotLabel } from '../lib/domain'
 import { ids } from '../lib/ids'
-import { mealKcal, mealProtein } from '../lib/nutrition'
+import { addsToDiet, mealKcal, mealProtein, supplementNutritionText } from '../lib/nutrition'
 import { photoPath } from '../lib/data/repo'
 import { shrinkPhoto } from '../lib/photo'
 import { remove, upsert, useStore } from '../lib/store'
-import type { Meal, MealSlot } from '../lib/types'
+import type { Meal, MealSlot, Supplement } from '../lib/types'
 import { limits, num, rangeError } from '../lib/validate'
 
 function blankMeal(date: string, slot: MealSlot): Meal {
@@ -63,10 +63,50 @@ export default function Meals() {
         )}
       </div>
       <NutritionCard date={date} />
+      <DietSupplementsCard date={date} />
       {ALL_SLOTS.map((s) => (
         <MealCard key={s} date={date} slot={s} meal={d.meals[s]} />
       ))}
     </>
+  )
+}
+
+/** 식단에 더하는 쉐이크 등: 먹었으면 눌러 체크 (오늘 화면 보충제 체크와 같은 기록) */
+function DietSupplementsCard({ date }: { date: string }) {
+  const { index, apply, todayDate } = useStore()
+  const d = dayOf(index, date)
+  const list = index.supplements.filter(addsToDiet)
+  if (!list.length) return null
+  const toggle = (s: Supplement) => {
+    const id = ids.supplementLog(date, s.id)
+    if (d.logs.has(s.id)) apply([remove('supplement_logs', [id])])
+    else apply([upsert('supplement_logs', [{ id, date, supplement_id: s.id, taken_at: date === todayDate ? new Date().toISOString() : `${date}T12:00:00+09:00` }])])
+  }
+  return (
+    <section className="card" aria-label="쉐이크">
+      {list.map((s) => {
+        const on = d.logs.has(s.id)
+        return (
+          <div key={s.id} className="row">
+            <div className="grow">
+              <div className="strong">{s.name}</div>
+              <div className="muted">{supplementNutritionText(s)}</div>
+            </div>
+            <button type="button" className={'chip' + (on ? ' on' : '')} aria-pressed={on} onClick={() => toggle(s)}>
+              {on && <Icon name="check" size={14} width={3} />}
+              {on ? '먹음' : '안 먹음'}
+            </button>
+          </div>
+        )
+      })}
+      <span className="muted">
+        먹은 날은 단백질·칼로리 합계에 더해져요. 양과 성분은{' '}
+        <Link to="/settings" className="btn-link">
+          설정
+        </Link>
+        에서 바꿀 수 있어요.
+      </span>
+    </section>
   )
 }
 

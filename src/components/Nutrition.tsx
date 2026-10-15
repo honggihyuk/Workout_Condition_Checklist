@@ -34,7 +34,9 @@ export function NutritionCard({ date }: { date: string }) {
     <section className="card" aria-label={`${dayWord} 단백질과 칼로리`}>
       <div className="row between">
         <h2>{dayWord} 먹은 양</h2>
-        <span className="muted">숫자를 적은 끼니 {n.intake.counted}개</span>
+        <span className="muted">
+          끼니 {n.intake.counted}개{n.intake.extras.length > 0 && ` + ${n.intake.extras.map((s) => s.short_name || s.name).join(', ')}`}
+        </span>
       </div>
 
       <div className="stack-sm">

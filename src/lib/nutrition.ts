@@ -3,8 +3,8 @@
 // - 쓴 칼로리: 기초대사량 + 일상 활동 + 운동. 운동은 쉬는 동안 쓰는 몫을 뺀 "활동 칼로리"로 계산해
 //   기초대사량과 겹치지 않게 합니다 (계산식은 docs/06-build.md 3-2).
 import { addDays } from './dates'
-import { dayOf, lastBefore, type Index } from './domain'
-import type { Meal, Run } from './types'
+import { dayOf, fmtNum, lastBefore, type Index } from './domain'
+import type { Meal, Run, Supplement } from './types'
 
 export const PROTEIN_G_PER_KG = { min: 1.5, max: 2 }
 /** 일상 활동: 기초대사량의 20% (앉아서 일하는 하루 기준) */
@@ -22,6 +22,20 @@ export function gymMet(intensity: number | null | undefined): number {
   if (intensity <= 2) return 3.5
   if (intensity === 3) return 5
   return 6
+}
+
+/** 식단에 더하는 영양제·보충제 (쉐이크 등): 단백질이나 칼로리가 적힌 것 */
+export const addsToDiet = (s: Supplement) => s.protein_g != null || s.kcal != null
+
+/** 40g · 단백질 36g · 150kcal */
+export function supplementNutritionText(s: Supplement): string {
+  return [
+    s.serving_g != null ? `${fmtNum(s.serving_g)}g` : '',
+    s.protein_g != null ? `단백질 ${fmtNum(s.protein_g)}g` : '',
+    s.kcal != null ? `${fmtNum(s.kcal, 0)}kcal` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 export const mealKcal = (m: Meal) => m.manual_kcal ?? m.ai_kcal
@@ -43,7 +57,16 @@ export function gymKcal(sets: number, intensity: number | null | undefined, kg: 
 
 export interface DayNutrition {
   weightKg: number | null
-  intake: { kcal: number; protein: number; counted: number; missing: number }
+  intake: {
+    kcal: number
+    protein: number
+    /** 숫자가 있는 끼니 수 */
+    counted: number
+    /** 사진·메뉴만 있고 숫자가 없는 끼니 수 */
+    missing: number
+    /** 먹은 쉐이크 등 (식단에 더하는 영양제·보충제) */
+    extras: Supplement[]
+  }
   protein: { min: number; max: number } | null
   /** 운동 활동 칼로리. 체중이 없으면 null */
   exercise: { gym: number; run: number; total: number; sets: number; runKm: number } | null
@@ -72,6 +95,15 @@ export function dayNutrition(index: Index, date: string): DayNutrition {
     protein += p ?? 0
   }
 
+  const extras: Supplement[] = []
+  for (const sid of d.logs.keys()) {
+    const s = index.supplementById.get(sid)
+    if (!s || !addsToDiet(s)) continue
+    extras.push(s)
+    kcal += s.kcal ?? 0
+    protein += s.protein_g ?? 0
+  }
+
   const runKm = d.runs.reduce((a, r) => a + r.distance_km, 0)
   const exercise =
     kg == null
@@ -97,7 +129,7 @@ export function dayNutrition(index: Index, date: string): DayNutrition {
 
   return {
     weightKg: kg,
-    intake: { kcal, protein, counted, missing },
+    intake: { kcal, protein, counted, missing, extras },
     protein: kg == null ? null : { min: kg * PROTEIN_G_PER_KG.min, max: kg * PROTEIN_G_PER_KG.max },
     exercise,
     burn,

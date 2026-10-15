@@ -12,6 +12,7 @@ export const limits = {
   mealKcal: { min: 0, max: 5000 },
   mealProtein: { min: 0, max: 300 },
   mealGram: { min: 0, max: 5000 },
+  supplementServing: { min: 0, max: 500 },
   muscleKg: { min: 5, max: 100 },
   fatKg: { min: 0, max: 150 },
   bmr: { min: 500, max: 4000 },

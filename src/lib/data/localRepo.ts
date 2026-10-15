@@ -3,6 +3,7 @@ import { today } from '../dates'
 import { allTables, datedTables, type DB, type TableName, type Tables } from '../types'
 import { blobs, local } from '../storage'
 import { demoData, demoPhoto, DEMO_PHOTO_PREFIX } from './demo'
+import { seedSupplements } from '../seed'
 import { toDB, type Repo } from './repo'
 
 // v2: 러닝 루틴이 생기면서 예시 기록을 새로 채움
@@ -13,10 +14,22 @@ type Rows = { [K in TableName]: Tables[K][] }
 
 function read(): Rows {
   const saved = local.getJSON<Rows>(KEY)
-  if (saved && allTables.every((t) => Array.isArray(saved[t]))) return saved
+  if (saved && allTables.every((t) => Array.isArray(saved[t]))) return upgrade(saved)
   const fresh = demoData(today())
   local.setJSON(KEY, fresh)
   return fresh
+}
+
+/** 예전 체험 기록에 새로 생긴 칸 채우기 (영양제의 식단 성분) */
+function upgrade(rows: Rows): Rows {
+  if (rows.supplements.every((s) => 'kcal' in s)) return rows
+  const seed = new Map(seedSupplements.map((s) => [s.id, s]))
+  rows.supplements = rows.supplements.map((s) => {
+    const base = seed.get(s.id)
+    return { ...s, serving_g: base?.serving_g ?? null, protein_g: base?.protein_g ?? null, kcal: base?.kcal ?? null }
+  })
+  write(rows)
+  return rows
 }
 
 function write(rows: Rows) {

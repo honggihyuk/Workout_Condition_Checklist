@@ -115,6 +115,7 @@ p { margin: 0; }
 .wrap { flex-wrap: wrap; }
 .grow { flex: 1; min-width: 0; }
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .indent { padding-left: 38px; }
 .center { text-align: center; }
 
