@@ -7,3 +7,4 @@ dist-demo
 !.env.example
 !.env.demo
 .DS_Store
+.wrangler
