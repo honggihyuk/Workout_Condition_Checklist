@@ -79,7 +79,7 @@
 | 로그인 | 구글 계정 | 확정 |
 | 시스템 문제 알림 | 아이폰 알림 | 확정 |
 | iOS 버전 | 26.1 (알림 조건 충족) | 확인됨 |
-| 기술 구성 | React + Vite PWA, Cloudflare Pages, Supabase(DB·로그인·사진·서버 기능·Cron), GitHub Actions | 기본값 |
+| 기술 구성 | React + Vite PWA, Cloudflare Pages(6차에서 Workers 정적 화면으로), Supabase(DB·로그인·사진·서버 기능·Cron), GitHub Actions | 기본값 |
 | 입력값 범위 | 4차 문서 5장 범위표 | 기본값 |
 
 ## 5차 UI 디자인 → [05-ui-design.md](./05-ui-design.md)
@@ -143,3 +143,5 @@
 | 서버 기능 올리는 방법 | Supabase 대시보드 편집기에 붙여 넣기 (자동 올리기는 배포(CI/CD) 단계에서) | 기본값 |
 | 서버 기능 계정 확인 | 기능 안에서 로그인 토큰으로 허용 계정을 확인하고, 대시보드의 Verify JWT는 끔 (새 키 형식에서도 동작하게) | 기본값 |
 | 연결 안내 | 대표님이 따라 하는 단계별 안내서 [setup.md](./setup.md) | 기본값 |
+| 화면 올리는 곳 | Cloudflare Workers 정적 화면 (`wrangler.jsonc`). 화면 주소를 새로 고쳐도 열리게 없는 주소는 index.html로 | 기본값 (Cloudflare가 Git 연결을 Workers 방식으로 바꿔서) |
+| 서버 값이 빠진 배포 | 체험판으로 열지 않고 "서버 연결 값이 없어요" 안내 | 기본값 |

@@ -1,0 +1,11 @@
+// Cloudflare 배포 설정 (Workers 정적 화면). 연결 순서는 docs/setup.md 7단계.
+// - name은 Cloudflare 화면에서 만든 이름(workout-dashboard)과 같아야 합니다.
+// - 화면 주소(/today 등)를 새로 고쳐도 열리게, 없는 파일은 index.html로 보냅니다 (_redirects 대신).
+{
+  "name": "workout-dashboard",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}

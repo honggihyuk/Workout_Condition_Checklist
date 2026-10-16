@@ -18,7 +18,7 @@
 ## 기술 구성
 
 - 화면: React + Vite + TypeScript, 아이폰 홈 화면에 추가하는 웹앱(PWA)
-- 배포: Cloudflare Pages (무료)
+- 배포: Cloudflare Workers 정적 화면 (무료, `wrangler.jsonc`)
 - 서버: Supabase 무료 (데이터베이스, 구글 로그인, 사진 보관, Edge Functions, Cron)
 - 식단 사진 분석: Google Gemini 무료 등급
 - 백업: 별도 비공개 GitHub 저장소 (GitHub Actions)
@@ -48,5 +48,5 @@ src/           화면 코드
   lib/         날짜·계산 규칙·저장 방식 (체험판 / 실제 서버)
 supabase/      서버 표 구조와 보안 규칙 (SQL), 사진 AI 분석 서버 기능 (functions/meal-analyze)
 scripts/       검수판 만들기 도구
-public/        정적 파일 (앱 아이콘, Cloudflare Pages 설정 포함)
+public/        정적 파일 (앱 아이콘, 홈 화면 앱 설정)
 ```

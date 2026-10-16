@@ -48,7 +48,7 @@
 
 | 구성 | 사용 기술 (무료) | 역할 |
 |---|---|---|
-| ① 화면 | PWA 웹앱 (React + Vite), Cloudflare Pages에 배포 | 화면 표시, 입력, 사진 압축, 엑셀 생성, 입력 임시 보관 |
+| ① 화면 | PWA 웹앱 (React + Vite), Cloudflare에 배포 (6차: Git 연결이 Workers 정적 화면 방식으로 바뀌어 Workers로 올림) | 화면 표시, 입력, 사진 압축, 엑셀 생성, 입력 임시 보관 |
 | ② 데이터베이스 | Supabase Postgres | 모든 기록 저장, 하루 상태·주간 KPI 계산 |
 | ② 로그인 | Supabase Auth + Google 로그인 | 대표님 구글 계정 1개만 허용 |
 | ② 사진 보관 | Supabase Storage (비공개 저장소 `meal-photos`) | 줄인 사진 보관 |
@@ -69,7 +69,7 @@
 | Supabase 사진 보관 | 1GB | 사진 1장 약 200KB로 줄이면 하루 3~4장 기준 연 약 250MB (추정) | ✓ |
 | Supabase 비활성 | 1주 사용이 없으면 일시정지 | 매일 깨우기 작업으로 방지 | ✓ |
 | Gemini 무료 등급 | 하루 요청 수 제한 (모델별, AI Studio에서 확인) | 하루 3~4장 + 재분석 | ✓ |
-| Cloudflare Pages | 개인 사용에 충분 | | |
+| Cloudflare Workers 정적 화면 | 정적 파일 요청은 무료·무제한 | | |
 | GitHub Actions | 비공개 저장소 월 무료 실행 시간 | 주 1회 백업 + 매일 깨우기, 몇 분 수준 | ✓ |
 
 ---

@@ -4,7 +4,7 @@ import { addDays, today } from './lib/dates'
 import type { DB } from './lib/types'
 import type { Repo } from './lib/data/repo'
 import { createLocalRepo } from './lib/data/localRepo'
-import { isDemo } from './lib/config'
+import { isDemo, missingServerConfig } from './lib/config'
 import { LOAD_FROM_DAYS, StoreProvider } from './lib/store'
 
 export function Loading({ text = '불러오는 중…' }: { text?: string }) {
@@ -48,6 +48,15 @@ const CloudGate = lazy(() => import('./CloudGate'))
 
 export default function Boot({ children }: { children: ReactNode }) {
   if (demoRepo) return <Loaded repo={demoRepo}>{children}</Loaded>
+  if (missingServerConfig)
+    return (
+      <div className="login">
+        <h1>서버 연결 값이 없어요</h1>
+        <p className="muted">
+          Cloudflare 설정의 빌드 변수에 VITE_SUPABASE_URL과 VITE_SUPABASE_ANON_KEY를 넣고 다시 배포해 주세요. (연결 안내서 7단계)
+        </p>
+      </div>
+    )
   return (
     <Suspense fallback={<Loading />}>
       <CloudGate>{children}</CloudGate>

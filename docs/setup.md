@@ -15,7 +15,7 @@
 | 4 | 구글 로그인 연결 | Google Cloud, Supabase |
 | 5 | 사진 AI(Gemini) 키 만들기 | aistudio.google.com |
 | 6 | 사진 분석 기능 올리기 | Supabase |
-| 7 | 앱 화면 올리기 | Cloudflare |
+| 7 | 앱 화면 올리기 | Cloudflare (Workers) |
 | 8 | 로그인 주소 등록 | Supabase |
 | 9 | 아이폰에서 열고 확인 | 아이폰 사파리 |
 
@@ -100,26 +100,29 @@
    - 편집기에 들어 있는 예시 글을 모두 지우고 붙여 넣기 → **Deploy function**
 5. 올린 함수 화면 → **Details(설정)** → **Verify JWT**(JWT 확인)를 **끄고** 저장합니다. 대표님 계정인지는 기능 안에서 직접 확인하므로 꺼도 안전합니다.
 
-## 7단계. 앱 화면 올리기 (Cloudflare Pages)
+## 7단계. 앱 화면 올리기 (Cloudflare)
+
+Cloudflare는 지금 Git 저장소를 연결하면 **Workers** 방식으로 올립니다. 필요한 설정 파일(`wrangler.jsonc`)은 저장소에 들어 있습니다.
 
 1. [dash.cloudflare.com](https://dash.cloudflare.com) → 가입·로그인.
-2. **Workers & Pages → 만들기(Create) → Pages → Git에 연결(Connect to Git)** → GitHub 계정 연결 → `Workout_Condition_Checklist` 저장소 선택.
-3. 빌드 설정
-   - 프로젝트 이름: `workout-dashboard` (주소가 `https://workout-dashboard.pages.dev`처럼 됩니다. 이미 쓰는 이름이면 뒤에 글자가 붙습니다)
-   - 프로덕션 브랜치: `claude/project-thread-dm7pz1` (지금 작업이 있는 곳입니다)
-   - 프레임워크: **없음(None)**
+2. **Workers & Pages → 만들기(Create application) → 저장소 가져오기(Import a repository)** → GitHub 계정 연결 → `Workout_Condition_Checklist` 저장소 선택.
+3. 설정
+   - 이름: `workout-dashboard` (설정 파일과 같은 이름이어야 합니다)
+   - 브랜치: `claude/project-thread-dm7pz1` (지금 작업이 있는 곳입니다)
    - 빌드 명령: `npm run build`
-   - 빌드 출력 디렉터리: `dist`
-4. **환경 변수(Environment variables)** 두 개를 추가합니다 (1단계에서 적어 둔 값).
+   - 배포 명령: `npx wrangler deploy` (처음 들어 있는 값 그대로)
+4. **빌드 변수(Build variables)** 두 개를 추가합니다 (1단계에서 적어 둔 값). 고급 설정(Advanced settings) 안에 있고, 만든 뒤에는 **Settings → Build → Build variables and secrets**에서 넣거나 고칩니다.
    - `VITE_SUPABASE_URL` = Project URL
    - `VITE_SUPABASE_ANON_KEY` = Publishable key
-5. **저장 및 배포(Save and Deploy)** → 몇 분 뒤 완료되면 `https://….pages.dev` 주소가 나옵니다. 이 주소를 적어 둡니다.
+   - **Settings → Variables and Secrets**(실행 변수)가 아니라 **Build** 쪽에 넣어야 합니다. 잘못 넣으면 앱에 "서버 연결 값이 없어요"가 나옵니다.
+5. **배포(Deploy)** → 몇 분 뒤 완료되면 `https://workout-dashboard.(계정 이름).workers.dev` 주소가 나옵니다. 이 주소를 적어 둡니다.
+6. 빌드 변수를 나중에 넣거나 고쳤다면 **Deployments**에서 다시 배포해야 반영됩니다.
 
 ## 8단계. 로그인 주소 등록
 
 1. Supabase → **Authentication → URL Configuration**
-   - **Site URL**: 7단계 주소 (예: `https://workout-dashboard.pages.dev`)
-   - **Redirect URLs → Add URL**: 같은 주소 뒤에 `/**`를 붙여서 추가 (예: `https://workout-dashboard.pages.dev/**`)
+   - **Site URL**: 7단계 주소 (예: `https://workout-dashboard.abc.workers.dev`)
+   - **Redirect URLs → Add URL**: 같은 주소 뒤에 `/**`를 붙여서 추가 (예: `https://workout-dashboard.abc.workers.dev/**`)
    - **Save**
 
 ## 9단계. 아이폰에서 열고 확인
@@ -137,7 +140,8 @@
 | 구글 로그인 뒤 오류 화면 또는 다시 로그인 화면 | 4단계 리디렉션 URI, 8단계 주소 |
 | AI 분석이 아직 연결되지 않았어요 | 6단계 이름(`GEMINI_API_KEY`, `meal-analyze`) 철자, Verify JWT 끄기 |
 | 오늘 AI 분석 무료 한도를 다 썼어요 | 정상입니다. 다음 날 다시 분석하거나 직접 적기 |
-| 화면이 안 열림 | 7단계 환경 변수 두 개, 빌드 설정 |
+| 서버 연결 값이 없어요 | 7단계 빌드 변수 두 개 (Build 쪽에 넣었는지), 넣은 뒤 다시 배포 |
+| 배포 실패: Invalid _redirects configuration | 저장소 최신 내용으로 다시 배포 (2026-10-16에 고침) |
 
 문의하실 때는 **화면에 나온 메시지만** 알려 주세요. 키 값은 보내지 않으셔도 됩니다.
 
@@ -146,4 +150,5 @@
 - 서버 표 구조와 보안 규칙: `supabase/migrations/0001_init.sql`
 - 사진 분석 기능: `supabase/functions/meal-analyze/index.ts` (다른 파일을 불러오지 않는 한 파일. 비밀값 `GEMINI_API_KEY`, 선택 `GEMINI_MODEL`)
 - 화면 환경 변수: `.env.example`
+- Cloudflare 배포 설정: `wrangler.jsonc` (이름, 화면 폴더 `dist`, 없는 주소는 index.html로)
 - 무료 서버는 1주일 동안 쓰지 않으면 잠시 멈춥니다. 매일 쓰면 문제없고, 자동 깨우기는 배포(CI/CD) 단계에서 넣습니다.
