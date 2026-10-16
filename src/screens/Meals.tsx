@@ -1,6 +1,6 @@
 // 식단: 끼니별 사진 올리기, 직접 입력(메뉴·양·칼로리·단백질), 메모, 오늘 먹은 양 (3차 3-3, U2·U9)
 // 먹은 양 카드: 단백질 목표(체중 × 1.5~2g) 대비, 먹은 칼로리와 쓴 칼로리 비교 (6차 검수 요청)
-// MVP에서는 AI 분석 없이 사진만 올려도 식사 칸이 채워지고, 칼로리는 알면 직접 적습니다 (docs/06-build.md 1-2)
+// 사진을 올리면 AI가 메뉴·칼로리·단백질을 어림하고, 대표님이 "맞아요"나 "고치기"로 확인합니다 (6차 검수 및 안정화, docs/06-build.md 4장)
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import Icon from '../components/Icon'
@@ -12,10 +12,10 @@ import { longLabel, nowTime } from '../lib/dates'
 import { ALL_SLOTS, dayOf, fmtNum, slotLabel } from '../lib/domain'
 import { ids } from '../lib/ids'
 import { addsToDiet, mealKcal, mealProtein, supplementNutritionText } from '../lib/nutrition'
-import { photoPath } from '../lib/data/repo'
+import { AnalyzeError, photoPath, type AnalyzeErrorCode } from '../lib/data/repo'
 import { shrinkPhoto } from '../lib/photo'
 import { remove, upsert, useStore } from '../lib/store'
-import type { Meal, MealSlot, Supplement } from '../lib/types'
+import type { Meal, MealSlot, MealStatus, Supplement } from '../lib/types'
 import { limits, num, rangeError } from '../lib/validate'
 
 function blankMeal(date: string, slot: MealSlot): Meal {
@@ -40,6 +40,28 @@ function blankMeal(date: string, slot: MealSlot): Meal {
 const kcalOf = mealKcal
 const proteinOf = mealProtein
 const menuOf = (m: Meal) => m.manual_menu ?? m.ai_menu
+/** 대표님이 직접 적은 값이 있는지 (있으면 사진을 바꿔도 AI 분석으로 덮지 않음) */
+const hasManual = (m: Meal) => m.manual_kcal != null || m.manual_protein_g != null || !!m.manual_menu
+/** 직접 적은 값을 다 지웠을 때: AI 추정이 있으면 확인 전으로 되돌림 */
+const photoOnlyStatus = (m: Meal): MealStatus => (m.ai_kcal != null || m.ai_protein_g != null ? 'estimated' : m.status === 'failed' ? 'failed' : 'uploaded')
+
+const AI_ERROR: Record<AnalyzeErrorCode, string> = {
+  rate_limit: '오늘 AI 분석 무료 한도를 다 썼어요. 내일 다시 분석을 누르시거나, 지금은 직접 적어 주세요.',
+  not_food: '음식 사진이 아닌 것 같아요. 다른 사진을 올리거나 직접 적어 주세요.',
+  setup: 'AI 분석이 아직 연결되지 않았어요. 연결 안내서의 Gemini 단계를 확인해 주세요. 지금은 직접 적어 주세요.',
+  offline: '인터넷에 연결되지 않아 분석하지 못했어요. 연결되면 다시 분석을 눌러 주세요.',
+  failed: 'AI가 이 사진을 분석하지 못했어요. 다시 분석하거나 직접 적어 주세요.',
+}
+
+function valuesText(m: Meal): string {
+  return [
+    kcalOf(m) != null ? `${fmtNum(kcalOf(m)!, 0)} kcal` : null,
+    proteinOf(m) != null ? `단백질 ${fmtNum(proteinOf(m)!, 0)}g` : null,
+    m.manual_g != null ? `${fmtNum(m.manual_g, 0)}g` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
 
 export default function Meals() {
   const date = useDateParam()
@@ -126,8 +148,43 @@ function MealCard({ date, slot, meal }: { date: string; slot: MealSlot; meal?: M
   const toast = useToast()
   const [editing, setEditing] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [analyzing, setAnalyzing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [aiError, setAiError] = useState<AnalyzeErrorCode | null>(null)
+  const [lowConfidence, setLowConfidence] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  // 분석을 기다리는 사이에 바뀐 기록 위에 결과를 얹기 위해 가장 최근 기록을 들고 있음
+  const mealRef = useRef(meal)
+  mealRef.current = meal
+
+  const analyze = async (path: string) => {
+    setAnalyzing(true)
+    setAiError(null)
+    setLowConfidence(false)
+    try {
+      const est = await repo.analyzePhoto(path)
+      const cur = mealRef.current
+      // 기다리는 사이 사진을 바꿨거나 기록을 지웠으면 결과를 버림
+      if (!cur || cur.photo_path !== path) return
+      apply([
+        upsert('meals', [
+          { ...cur, ai_menu: est.menu, ai_kcal: est.kcal, ai_protein_g: est.protein_g, status: cur.status === 'confirmed' ? 'confirmed' : 'estimated' },
+        ]),
+      ])
+      setLowConfidence(est.confidence === 'low')
+    } catch (e) {
+      const cur = mealRef.current
+      if (!cur || cur.photo_path !== path) return
+      setAiError(e instanceof AnalyzeError ? e.code : 'failed')
+      // 실패하면 직접 입력 칸을 엶 (4차 2-4)
+      if (cur.status !== 'confirmed') {
+        apply([upsert('meals', [{ ...cur, status: 'failed' }])])
+        setEditing(true)
+      }
+    } finally {
+      setAnalyzing(false)
+    }
+  }
 
   const onFile = async (file: File | undefined) => {
     if (!file) return
@@ -138,23 +195,36 @@ function MealCard({ date, slot, meal }: { date: string; slot: MealSlot; meal?: M
       const base = meal ?? blankMeal(date, slot)
       const path = photoPath(date, `${base.id}-${Date.now().toString(36)}`)
       await repo.putPhoto(path, blob)
-      apply([
-        upsert('meals', [
-          {
-            ...base,
-            photo_path: path,
-            status: base.status === 'confirmed' ? 'confirmed' : 'uploaded',
-            eaten_at: base.eaten_at ?? (date === todayDate ? nowTime() : null),
-          },
-        ]),
-      ])
+      // 직접 적은 값이 있으면 그대로 두고 사진만 바꿈. 아니면 새 사진으로 AI 분석
+      const keep = base.status === 'confirmed' && hasManual(base)
+      const next: Meal = {
+        ...base,
+        photo_path: path,
+        status: keep ? 'confirmed' : 'uploaded',
+        ai_menu: null,
+        ai_kcal: null,
+        ai_protein_g: null,
+        eaten_at: base.eaten_at ?? (date === todayDate ? nowTime() : null),
+      }
+      apply([upsert('meals', [next])])
       if (meal?.photo_path) void repo.removePhoto(meal.photo_path)
+      if (!keep) {
+        mealRef.current = next
+        setEditing(false)
+        void analyze(path)
+      }
     } catch (e) {
       setError('사진을 올리지 못했어요. 다시 시도해 주세요. ' + (e instanceof Error ? `(${e.message})` : ''))
     } finally {
       setUploading(false)
       if (fileRef.current) fileRef.current.value = ''
     }
+  }
+
+  const confirmAi = () => {
+    if (!meal) return
+    apply([upsert('meals', [{ ...meal, status: 'confirmed' }])])
+    setLowConfidence(false)
   }
 
   const deleteMeal = () => {
@@ -173,10 +243,17 @@ function MealCard({ date, slot, meal }: { date: string; slot: MealSlot; meal?: M
       }, 7000)
   }
 
-  const badge = !meal ? (
+  const status = meal?.status
+  const badge = analyzing ? (
+    <span className="badge badge-muted">분석 중</span>
+  ) : !meal ? (
     <span className="muted">미기록{slot === 'snack' ? ' · 선택' : ''}</span>
-  ) : meal.status === 'confirmed' ? (
+  ) : status === 'confirmed' ? (
     <span className="badge badge-good">확인함</span>
+  ) : status === 'estimated' ? (
+    <span className="badge badge-warn">확인 필요</span>
+  ) : status === 'failed' ? (
+    <span className="badge badge-warn">분석 실패</span>
   ) : (
     <span className="badge badge-muted">사진만</span>
   )
@@ -186,9 +263,10 @@ function MealCard({ date, slot, meal }: { date: string; slot: MealSlot; meal?: M
     <input ref={fileRef} type="file" accept="image/*" className="sr" tabIndex={-1} onChange={(e) => void onFile(e.target.files?.[0])} />
   )
   const pickPhoto = () => fileRef.current?.click()
+  const idle = !editing && !analyzing
 
   return (
-    <section id={'meal-' + slot} className="card" aria-label={slotLabel[slot]}>
+    <section id={'meal-' + slot} className="card" aria-label={slotLabel[slot]} aria-busy={analyzing || uploading}>
       {fileInput}
       <div className="row between">
         <h2>
@@ -198,21 +276,19 @@ function MealCard({ date, slot, meal }: { date: string; slot: MealSlot; meal?: M
       </div>
       {meal?.photo_path && <Photo path={meal.photo_path} alt={`${slotLabel[slot]} 사진`} />}
       {uploading && <p className="muted">사진을 줄여서 올리는 중…</p>}
+      {analyzing && (
+        <p className="muted ai-working" role="status">
+          AI가 사진을 보고 메뉴와 칼로리를 어림하는 중…
+        </p>
+      )}
       {error && <p className="error">{error}</p>}
 
-      {!editing && meal?.status === 'confirmed' && (
+      {idle && meal && status === 'confirmed' && (
         <div className="row between" style={{ alignItems: 'flex-end' }}>
           <div className="stack-sm" style={{ gap: 2 }}>
             {menuOf(meal) && <span className="strong">{menuOf(meal)}</span>}
-            <span className="small">
-              {[
-                kcalOf(meal) != null ? `${fmtNum(kcalOf(meal)!, 0)} kcal` : null,
-                proteinOf(meal) != null ? `단백질 ${fmtNum(proteinOf(meal)!, 0)}g` : null,
-                meal.manual_g != null ? `${fmtNum(meal.manual_g, 0)}g` : null,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-            </span>
+            <span className="small">{valuesText(meal)}</span>
+            {!hasManual(meal) && meal.ai_kcal != null && <span className="muted">AI 추정을 확인함</span>}
             {meal.memo && <span className="muted">{meal.memo}</span>}
           </div>
           <button type="button" className="btn btn-link small" onClick={() => setEditing(true)}>
@@ -220,15 +296,55 @@ function MealCard({ date, slot, meal }: { date: string; slot: MealSlot; meal?: M
           </button>
         </div>
       )}
-      {!editing && meal && meal.status !== 'confirmed' && (
+      {idle && meal && status === 'estimated' && (
         <>
-          <p className="muted">사진은 저장됐어요. 칼로리를 알면 적어 주세요.</p>
-          <button type="button" className="btn btn-ghost" onClick={() => setEditing(true)}>
-            칼로리·메뉴 적기
-          </button>
+          <div className="ai-estimate">
+            <span className="ai-label">AI 추정</span>
+            <span className="strong">{menuOf(meal)}</span>
+            <span className="small">{valuesText(meal)}</span>
+          </div>
+          <p className="muted">
+            {lowConfidence ? 'AI도 확신이 낮은 사진이에요. 메뉴와 양을 한 번 봐 주세요.' : '사진으로 어림한 값이에요. 맞으면 눌러 주시고, 다르면 고쳐 주세요.'}
+          </p>
+          <div className="grid2">
+            <button type="button" className="btn btn-primary" onClick={confirmAi}>
+              맞아요
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => setEditing(true)}>
+              고치기
+            </button>
+          </div>
         </>
       )}
-      {!editing && !meal && (
+      {idle && meal && status === 'failed' && (
+        <>
+          <p className="error">{AI_ERROR[aiError ?? 'failed']}</p>
+          <div className="grid2">
+            <button type="button" className="btn btn-ghost" disabled={!meal.photo_path} onClick={() => meal.photo_path && void analyze(meal.photo_path)}>
+              다시 분석
+            </button>
+            <button type="button" className="btn btn-primary" onClick={() => setEditing(true)}>
+              직접 적기
+            </button>
+          </div>
+        </>
+      )}
+      {idle && meal && (status === 'uploaded' || status === 'empty') && (
+        <>
+          <p className="muted">{meal.photo_path ? '사진은 저장됐어요. AI 분석을 아직 하지 않았어요.' : '메뉴나 칼로리를 적어 주세요.'}</p>
+          <div className="grid2">
+            {meal.photo_path && (
+              <button type="button" className="btn btn-ghost" onClick={() => void analyze(meal.photo_path!)}>
+                AI로 분석
+              </button>
+            )}
+            <button type="button" className="btn btn-quiet" onClick={() => setEditing(true)}>
+              직접 적기
+            </button>
+          </div>
+        </>
+      )}
+      {idle && !meal && (
         <div className="grid2">
           <button type="button" className="btn btn-ghost" disabled={uploading} onClick={pickPhoto}>
             <Icon name="camera" /> 사진 올리기
@@ -238,6 +354,7 @@ function MealCard({ date, slot, meal }: { date: string; slot: MealSlot; meal?: M
           </button>
         </div>
       )}
+      {editing && aiError && status === 'failed' && <p className="error">{AI_ERROR[aiError]}</p>}
       {editing && (
         <MealForm
           date={date}
@@ -318,7 +435,7 @@ function MealForm({
           manual_kcal: kcal,
           manual_protein_g: protein,
           memo: f.memo.trim() || null,
-          status: hasContent ? 'confirmed' : base.photo_path ? 'uploaded' : 'empty',
+          status: hasContent ? 'confirmed' : base.photo_path ? photoOnlyStatus(base) : 'empty',
         },
       ]),
     ])

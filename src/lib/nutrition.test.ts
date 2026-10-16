@@ -40,10 +40,25 @@ describe('단백질 목표와 칼로리 비교', () => {
     })
     const n = dayNutrition(index, D)
     expect(n.protein).toEqual({ min: 114, max: 152 })
-    expect(n.intake).toEqual({ kcal: 1160, protein: 70, counted: 2, missing: 1, extras: [] })
+    expect(n.intake).toEqual({ kcal: 1160, protein: 70, counted: 2, missing: 1, estimated: 0, extras: [] })
     expect(proteinGap(70, n.protein!)).toEqual({ state: 'under', grams: 44 })
     expect(proteinGap(130, n.protein!).state).toBe('in')
     expect(proteinGap(160, n.protein!)).toEqual({ state: 'over', grams: 8 })
+  })
+
+  it('AI 추정은 확인 전에도 합계에 들어가고 따로 셈, 직접 고친 값이 AI 값보다 우선', () => {
+    const ai = (slot: Meal['slot'], kcal: number, protein: number, status: Meal['status']): Meal => ({
+      ...meal(slot, null, null),
+      status,
+      ai_menu: '제육볶음 정식',
+      ai_kcal: kcal,
+      ai_protein_g: protein,
+    })
+    const index = make({
+      meals: [ai('breakfast', 780, 35, 'estimated'), ai('lunch', 640, 32, 'confirmed'), { ...ai('dinner', 900, 20, 'confirmed'), manual_kcal: 700, manual_protein_g: 40 }],
+    })
+    const n = dayNutrition(index, D)
+    expect(n.intake).toMatchObject({ kcal: 2120, protein: 107, counted: 3, missing: 0, estimated: 1 })
   })
 
   it('쉐이크를 먹은 날은 쉐이크 단백질·칼로리가 먹은 양에 더해짐 (기본 40g · 36g · 150kcal)', () => {

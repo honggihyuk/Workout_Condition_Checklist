@@ -244,6 +244,12 @@ textarea.field { padding: 10px 12px; min-height: 72px; resize: vertical; }
 .energy-in { background: var(--accent); }
 .energy-out { background: var(--unchecked); }
 .energy-val { text-align: right; font-variant-numeric: tabular-nums; font-size: 0.875rem; }
+/* 사진 AI 분석 (6차 2단계) */
+.ai-estimate { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: var(--radius-control); border: 1.5px dashed var(--warn); background: var(--warn-soft); }
+.ai-label { font-size: 0.75rem; font-weight: 700; color: var(--warn); letter-spacing: 0.02em; }
+.ai-working::before { content: ''; display: inline-block; width: 0.6em; height: 0.6em; margin-right: 8px; border-radius: 50%; background: var(--accent); vertical-align: 0.05em; animation: ai-pulse 1s ease-in-out infinite alternate; }
+@keyframes ai-pulse { from { opacity: 0.25; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ai-working::before { animation: none; } }
 .nutrition-summary { display: flex; flex-direction: column; gap: 2px; padding-left: 38px; font-size: 0.8125rem; color: var(--text); text-decoration: none; }
 
 /* 운동 기록 */

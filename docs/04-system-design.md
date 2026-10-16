@@ -139,7 +139,7 @@
 
 | 기능 | 호출 | 입력 | 결과 | 실패 시 |
 |---|---|---|---|---|
-| 식사 사진 분석 | `POST /functions/v1/meal-analyze` | meal_id | status=`estimated`, 메뉴·칼로리·단백질 | status=`failed`, 화면은 직접 입력 칸을 엶 |
+| 식사 사진 분석 | `POST /functions/v1/meal-analyze` | photo_path (6차에서 바꿈) | 메뉴·칼로리·단백질·확신 정도. 화면이 받아서 status=`estimated`로 저장 (6차에서 바꿈) | status=`failed`, 화면은 직접 입력 칸을 엶 |
 | 알림 기기 등록 | `POST /functions/v1/push-subscribe` | 알림 구독 정보 | 등록 완료 | 화면에 "알림 설정 실패, 다시 시도" |
 | 알림 기기 해제 | `POST /functions/v1/push-unsubscribe` | endpoint | 해제 완료 | |
 
@@ -199,9 +199,9 @@
 | 항목 | 내용 |
 |---|---|
 | 호출 위치 | Edge Function `meal-analyze`, `meal-reanalyze` (API 키는 서버에만 보관) |
-| 모델 | 설정값 `GEMINI_MODEL`로 지정. 무료 등급에서 사진 입력을 지원하는 Flash 계열 (구현 시 확인) |
+| 모델 | 설정값 `GEMINI_MODEL`로 지정. 무료 등급에서 사진 입력을 지원하는 Flash 계열. 6차 확인: 기본 `gemini-3.8-flash` (2026-10 새 프로젝트 권장, 2.5 계열은 기존 사용자만) |
 | 보내는 것 | 사진 1장 + 고정 지시문 "이 음식 사진의 메뉴, 총 칼로리(kcal), 단백질(g)을 한국어 JSON으로 추정" |
-| 받는 형식 | `{ "menu": "닭가슴살 샐러드", "kcal": 420, "protein_g": 35, "confidence": "medium" }` |
+| 받는 형식 | `{ "menu": "닭가슴살 샐러드", "kcal": 420, "protein_g": 35, "confidence": "medium", "is_food": true }` (6차에서 음식 여부 추가) |
 | 검사 | JSON이 아니거나, kcal이 0~5000 밖이거나, protein_g가 0~300 밖이면 실패로 처리 |
 | 제한 시간 | 30초 |
 | 오류 처리 | 한도 초과(429) → `failed` + 새벽 재분석 대상 / 그 밖의 오류 → `failed` / 둘 다 화면은 직접 입력 칸을 엶 |
@@ -278,7 +278,7 @@
 
 ## 6. 구현 시 확인할 것
 
-1. Gemini 무료 등급의 하루 요청 한도와 사진 입력 가능한 모델 (Google AI Studio 한도 화면)
+1. Gemini 무료 등급의 하루 요청 한도와 사진 입력 가능한 모델 (Google AI Studio 한도 화면). 6차 확인: 사진 입력 가능한 무료 모델 `gemini-3.8-flash`를 기본으로 함. 하루 한도는 프로젝트마다 AI Studio에서 보여 주며 공개 표는 없음
 2. Supabase 무료 등급의 일시정지 규칙, Cron 사용 가능 여부, 저장 한도
 3. GitHub 비공개 저장소의 Actions 무료 실행 시간
 4. ~~대표님 아이폰 iOS 버전이 16.4 이상인지 (알림 조건)~~ 확인 완료: iOS 26.1
@@ -288,4 +288,6 @@
 - [Hugging Face Inference Providers 가격 문서](https://huggingface.co/docs/inference-providers/pricing): 무료 계정 월 포함 사용량 없음
 - [Hugging Face 포럼: 무료 CPU Space 변경 보고](https://discuss.huggingface.co/t/official-community-complaint-revert-free-cpu-basic-spaces-and-remove-anti-developer-sdk-restrictions/177703)
 - [Gemini API 사용 한도 문서](https://ai.google.dev/gemini-api/docs/rate-limits): 무료 등급 존재, 모델별 한도는 AI Studio에서 확인
+- [Gemini API 변경 기록](https://ai.google.dev/gemini-api/docs/changelog): 2026-09 이후 2.5 계열은 기존 사용자만, 새 프로젝트는 3.8 Flash·3.5 Flash-Lite 권장 (6차 확인)
+- [Supabase 새 API 키 안내](https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys): Publishable key는 anon key와 같은 권한, 서버 기능의 기본 JWT 확인은 예전 키 형식만 이해함 (6차 확인)
 - [Supabase 무료 등급 한도 정리 (2026년 5월 기준)](https://automationatlas.io/answers/supabase-free-tier-limits-2026/): DB 500MB, 저장 1GB, 1주 비활성 시 일시정지

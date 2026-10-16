@@ -2,7 +2,7 @@
 import { addDays, weekday } from '../dates'
 import { ids, newId } from '../ids'
 import { RUN_ROUTINE_ID, seedExercises, seedRoutineItems, seedRoutines, seedSupplements, SEED_VERSION } from '../seed'
-import type { Condition, Meal, MealSlot, Run, SupplementLog, Tables, Workout, WorkoutSet } from '../types'
+import type { Condition, Meal, MealEstimate, MealSlot, Run, SupplementLog, Tables, Workout, WorkoutSet } from '../types'
 
 export const DEMO_PHOTO_PREFIX = 'demo/'
 
@@ -69,10 +69,11 @@ export function demoData(todayDate: string): { [K in keyof Tables]: Tables[K][] 
       slot,
       eaten_at: time,
       photo_path: photo ? `${DEMO_PHOTO_PREFIX}${Math.floor(r() * 6)}` : null,
-      status: confirmed ? 'confirmed' : 'uploaded',
-      ai_menu: null,
-      ai_kcal: null,
-      ai_protein_g: null,
+      // 확인 안 한 사진은 AI 추정이 들어 있는 상태 (6차 2단계)
+      status: confirmed ? 'confirmed' : photo ? 'estimated' : 'empty',
+      ai_menu: !confirmed && photo ? menu : null,
+      ai_kcal: !confirmed && photo ? kcal : null,
+      ai_protein_g: !confirmed && photo ? protein : null,
       manual_menu: confirmed ? menu : null,
       manual_g: null,
       manual_kcal: confirmed ? kcal : null,
@@ -146,7 +147,7 @@ export function demoData(todayDate: string): { [K in keyof Tables]: Tables[K][] 
     if (wd % 2 === 0) weights.push({ id: ids.bodyWeight(date), date, weight_kg: Math.round((76.9 - 0.03 * weights.length + (r() - 0.5) * 0.6) * 10) / 10 })
   }
 
-  // 오늘: 아침 컨디션 완료, 아침 식사 확인함, 점심 사진만, 영양제 3/5
+  // 오늘: 아침 컨디션 완료, 아침 식사 확인함, 점심 AI 추정(확인 전), 영양제 3/5
   conditions.push({ id: ids.morning(todayDate), date: todayDate, type: 'morning', fatigue: 2, sleep_quality: 4, intensity: null, focus: null })
   meals.push({ ...meal(todayDate, 'breakfast', '08:10', true), manual_menu: '현미밥, 닭가슴살, 김치', manual_kcal: 520, manual_protein_g: 38 })
   meals.push(meal(todayDate, 'lunch', '12:40', false))
@@ -174,6 +175,15 @@ export function demoData(todayDate: string): { [K in keyof Tables]: Tables[K][] 
 }
 
 export { SEED_VERSION }
+
+/** 체험판 사진 분석: 실제 AI 대신 사진 경로로 정해지는 예시 결과 */
+export function demoEstimate(path: string): MealEstimate {
+  let h = 0
+  for (const c of path) h = (Math.imul(h, 31) + c.charCodeAt(0)) | 0
+  const [menu, kcal, protein] = menus[Math.abs(h) % menus.length]
+  const confidence = (['high', 'medium', 'medium', 'low'] as const)[Math.abs(h >> 3) % 4]
+  return { menu, kcal, protein_g: protein, confidence }
+}
 
 /** 체험판 음식 사진 대신 쓰는 그림 */
 export function demoPhoto(path: string): string {

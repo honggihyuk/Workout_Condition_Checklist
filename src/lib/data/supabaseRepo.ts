@@ -1,10 +1,12 @@
 // 실제 서버 저장소 (Supabase). 표 구조: supabase/migrations/0001_init.sql
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import { datedTables, listTables, type DB, type TableName } from '../types'
-import { toDB, type Repo } from './repo'
+import { createClient, FunctionsFetchError, FunctionsHttpError, type SupabaseClient } from '@supabase/supabase-js'
+import { datedTables, listTables, type DB, type MealEstimate, type TableName } from '../types'
+import { AnalyzeError, analyzeErrorCode, toDB, type Repo } from './repo'
 
 const BUCKET = 'meal-photos'
 const PAGE = 1000
+/** 사진 분석 기다리는 시간 (서버 쪽 Gemini 제한 30초 + 사진 받기 여유) */
+const ANALYZE_TIMEOUT_MS = 45_000
 
 let client: SupabaseClient | null = null
 
@@ -83,6 +85,21 @@ export function createSupabaseRepo(): Repo {
     async removePhoto(path) {
       await sb.storage.from(BUCKET).remove([path])
       signedUrls.delete(path)
+    },
+    async analyzePhoto(path) {
+      if (!navigator.onLine) throw new AnalyzeError('offline')
+      const { data, error } = await sb.functions.invoke<MealEstimate>('meal-analyze', { body: { photo_path: path }, timeout: ANALYZE_TIMEOUT_MS })
+      if (error) {
+        if (error instanceof FunctionsHttpError) {
+          const res = error.context as Response
+          const body = (await res.json().catch(() => null)) as { error?: unknown } | null
+          throw new AnalyzeError(analyzeErrorCode(body?.error, res.status), `${res.status} ${String(body?.error ?? '')}`)
+        }
+        if (error instanceof FunctionsFetchError) throw new AnalyzeError(navigator.onLine ? 'failed' : 'offline', error.message)
+        throw new AnalyzeError('failed', error.message)
+      }
+      if (!data || typeof data.menu !== 'string' || typeof data.kcal !== 'number' || typeof data.protein_g !== 'number') throw new AnalyzeError('failed', 'bad_answer')
+      return { menu: data.menu, kcal: data.kcal, protein_g: data.protein_g, confidence: data.confidence }
     },
   }
 }

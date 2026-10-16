@@ -97,6 +97,14 @@ export interface Meal {
   memo: string | null
 }
 
+/** 사진 AI 분석 결과 (서버 기능 meal-analyze, docs/04-system-design.md 4-1) */
+export interface MealEstimate {
+  menu: string
+  kcal: number
+  protein_g: number
+  confidence: 'high' | 'medium' | 'low'
+}
+
 export interface SupplementLog {
   id: string
   date: string

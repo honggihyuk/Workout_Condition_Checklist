@@ -29,6 +29,9 @@ export function NutritionCard({ date }: { date: string }) {
   const missingNote = n.intake.missing > 0 && (
     <span className="muted">숫자를 적지 않은 끼니 {n.intake.missing}개는 합계에서 빠져 있어요.</span>
   )
+  const estimatedNote = n.intake.estimated > 0 && (
+    <span className="muted">아직 확인하지 않은 AI 추정 {n.intake.estimated}끼가 들어 있어요. 아래 끼니에서 맞는지 봐 주세요.</span>
+  )
 
   return (
     <section className="card" aria-label={`${dayWord} 단백질과 칼로리`}>
@@ -101,6 +104,7 @@ export function NutritionCard({ date }: { date: string }) {
             쓴 칼로리와 비교할 수 있어요.
           </span>
         )}
+        {estimatedNote}
         {missingNote}
       </div>
     </section>

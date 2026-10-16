@@ -31,12 +31,12 @@
 npm install
 npm run dev        # 개발 서버
 npm run build      # 타입 검사 + 배포용 빌드 (dist/)
-npm test           # 계산 규칙 시험
+npm test           # 계산 규칙과 사진 분석 서버 기능 시험
 npm run build:demo # 예시 기록으로 도는 체험판 빌드 (dist-demo/)
 npm run review:page # 체험판을 파일 하나로 묶은 검수판 (dist-demo/review.html)
 ```
 
-서버 값(`.env`)이 없으면 예시 기록으로 도는 체험판으로 열립니다. 실제 서버 연결 방법은 `.env.example`과 `supabase/migrations/0001_init.sql` 맨 위 설명을 봅니다.
+서버 값(`.env`)이 없으면 예시 기록으로 도는 체험판으로 열립니다. 실제 서버 연결은 [docs/setup.md](docs/setup.md)의 단계별 안내를 따릅니다.
 
 ## 폴더 구조
 
@@ -46,7 +46,7 @@ src/           화면 코드
   screens/     탭별 화면 (오늘, 달력, 운동, 식단, 몸 변화, 설정)
   components/  여러 화면이 같이 쓰는 부품 (버튼, 그래프, 운동 고르기 등)
   lib/         날짜·계산 규칙·저장 방식 (체험판 / 실제 서버)
-supabase/      서버 표 구조와 보안 규칙 (SQL)
+supabase/      서버 표 구조와 보안 규칙 (SQL), 사진 AI 분석 서버 기능 (functions/meal-analyze)
 scripts/       검수판 만들기 도구
 public/        정적 파일 (앱 아이콘, Cloudflare Pages 설정 포함)
 ```

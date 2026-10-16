@@ -2,13 +2,15 @@
 import { today } from '../dates'
 import { allTables, datedTables, type DB, type TableName, type Tables } from '../types'
 import { blobs, local } from '../storage'
-import { demoData, demoPhoto, DEMO_PHOTO_PREFIX } from './demo'
+import { demoData, demoEstimate, demoPhoto, DEMO_PHOTO_PREFIX } from './demo'
 import { seedSupplements } from '../seed'
-import { toDB, type Repo } from './repo'
+import { AnalyzeError, type AnalyzeErrorCode, toDB, type Repo } from './repo'
 
 // v2: 러닝 루틴이 생기면서 예시 기록을 새로 채움
-const KEY = 'wcc.demo.v2'
+// v3: 사진 AI 분석이 생기면서 확인 전 사진에 AI 추정을 채움
+const KEY = 'wcc.demo.v3'
 local.remove('wcc.demo.v1')
+local.remove('wcc.demo.v2')
 
 type Rows = { [K in TableName]: Tables[K][] }
 
@@ -85,8 +87,18 @@ export function createLocalRepo(): Repo {
     async removePhoto(path) {
       await blobs.remove(path)
     },
+    // 체험판은 실제 AI를 부르지 않고 잠시 뒤 예시 결과를 돌려줍니다.
+    // 검수용: 기기 저장소 wcc.demo.aiFail에 실패 이유(rate_limit 등)를 넣으면 그 실패를 흉내 냅니다.
+    async analyzePhoto(path) {
+      await new Promise((r) => setTimeout(r, 1500))
+      const fail = local.get(AI_FAIL_KEY) as AnalyzeErrorCode | null
+      if (fail) throw new AnalyzeError(fail, 'demo')
+      return demoEstimate(path)
+    },
   }
 }
+
+const AI_FAIL_KEY = 'wcc.demo.aiFail'
 
 /** 설정 → 체험 기록 처음으로 */
 export async function resetDemo() {

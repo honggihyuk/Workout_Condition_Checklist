@@ -64,6 +64,8 @@ export interface DayNutrition {
     counted: number
     /** 사진·메뉴만 있고 숫자가 없는 끼니 수 */
     missing: number
+    /** 숫자가 AI 추정이고 아직 확인하지 않은 끼니 수 */
+    estimated: number
     /** 먹은 쉐이크 등 (식단에 더하는 영양제·보충제) */
     extras: Supplement[]
   }
@@ -82,6 +84,7 @@ export function dayNutrition(index: Index, date: string): DayNutrition {
   let protein = 0
   let counted = 0
   let missing = 0
+  let estimated = 0
   for (const m of Object.values(d.meals)) {
     if (!m) continue
     const k = mealKcal(m)
@@ -91,6 +94,7 @@ export function dayNutrition(index: Index, date: string): DayNutrition {
       continue
     }
     counted++
+    if (m.status === 'estimated') estimated++
     kcal += k ?? 0
     protein += p ?? 0
   }
@@ -129,7 +133,7 @@ export function dayNutrition(index: Index, date: string): DayNutrition {
 
   return {
     weightKg: kg,
-    intake: { kcal, protein, counted, missing, extras },
+    intake: { kcal, protein, counted, missing, estimated, extras },
     protein: kg == null ? null : { min: kg * PROTEIN_G_PER_KG.min, max: kg * PROTEIN_G_PER_KG.max },
     exercise,
     burn,
